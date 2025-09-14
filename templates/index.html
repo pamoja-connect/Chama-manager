@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Pamoja Agencies SHG{% endblock %}
+
+{% block content %}
+<div class="hero-section bg-primary text-white py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <div class="hero-content position-relative">
+                <h1 class="display-4 fw-bold mb-4">Welcome to Pamoja Agencies SHG</h1>
+                <p class="lead mb-4">Building financial independence through community support and shared resources</p>
+                <div class="d-grid gap-2 d-md-flex">
+                    <a href="{{ url_for('login') }}" class="btn btn-light btn-lg me-md-2">
+                        <i class="fas fa-sign-in-alt me-2"></i>Member Login
+                    </a>
+                    <a href="{{ url_for('apply_membership') }}" class="btn btn-success btn-lg me-3">
+                        <i class="fas fa-user-plus me-2"></i>Apply for Membership
+                    </a>
+                    <a href="#about" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-info-circle me-2"></i>Learn More
+                    </a>
+                </div>
+            </div>
+            </div>
+            <div class="col-lg-6 text-center">
+                <div class="feature-icon bg-light text-primary rounded-circle mx-auto mb-3" style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-handshake" style="font-size: 5rem;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Section -->
+<div class="container my-5">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-3x mb-3"></i>
+                    <h3 class="card-title">{{ stats.total_members }}</h3>
+                    <p class="card-text">Active Members</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-calendar-alt fa-3x mb-3"></i>
+                    <h3 class="card-title">{{ stats.group_established }}</h3>
+                    <p class="card-text">Year Established</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-warning text-white h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-piggy-bank fa-3x mb-3"></i>
+                    <h3 class="card-title">{{ format_currency(stats.total_contributions) }}</h3>
+                    <p class="card-text">Total Savings</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- About Section -->
+<section id="about" class="py-5 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h2 class="display-5 fw-bold mb-4">About Pamoja Agencies SHG</h2>
+                <p class="lead mb-4">
+                    Pamoja Agencies Self-Help Group was established in 2023 with the mission to provide 
+                    financial services and support to our community members. We focus on savings, 
+                    micro-loans, and collective development projects.
+                </p>
+            </div>
+        </div>
+
+        <div class="row g-4 mt-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="text-center">
+                    <div class="feature-icon bg-primary text-white rounded-circle mx-auto mb-3" style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-piggy-bank fa-2x"></i>
+                    </div>
+                    <h5>Savings Plans</h5>
+                    <p class="text-muted">Regular and special contribution schemes to help members save consistently.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="text-center">
+                    <div class="feature-icon bg-success text-white rounded-circle mx-auto mb-3" style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-hand-holding-usd fa-2x"></i>
+                    </div>
+                    <h5>Micro Loans</h5>
+                    <p class="text-muted">Access to affordable loans for business development and emergency needs.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="text-center">
+                    <div class="feature-icon bg-info text-white rounded-circle mx-auto mb-3" style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
+                    <h5>Community Support</h5>
+                    <p class="text-muted">Collective decision making and support for member welfare and development.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="text-center">
+                    <div class="feature-icon bg-warning text-white rounded-circle mx-auto mb-3" style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-chart-line fa-2x"></i>
+                    </div>
+                    <h5>Financial Growth</h5>
+                    <p class="text-muted">Track your financial progress and participate in group investment projects.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Join Us Section -->
+<section id="join" class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h2 class="display-5 fw-bold mb-4">Join Pamoja Agencies SHG</h2>
+                <p class="lead mb-4">
+                    Interested in becoming a member? Contact our administrators to learn about 
+                    membership requirements and benefits.
+                </p>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-envelope me-2"></i>Contact Information
+                        </h5>
+                        <p class="card-text">
+                            <strong>Email:</strong> 
+                            <a href="mailto:pamojaagenciesshg@gmail.com" class="text-decoration-none">
+                                pamojaagenciesshg@gmail.com
+                            </a>
+                        </p>
+                        <p class="card-text">
+                            <strong>Administrator:</strong> Salim Tuva Karisa
+                        </p>
+                        <p class="card-text text-muted">
+                            We review membership applications regularly and will get back to you within 
+                            a few days of receiving your inquiry.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Services Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center mb-5">
+                <h2 class="display-5 fw-bold">Our Services</h2>
+                <p class="lead">Comprehensive financial and community services for our members</p>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-coins fa-2x text-primary me-3"></i>
+                            <h5 class="card-title mb-0">Regular Contributions</h5>
+                        </div>
+                        <p class="card-text">
+                            Monthly savings contributions that help build your personal savings 
+                            while contributing to the group's collective fund.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-credit-card fa-2x text-success me-3"></i>
+                            <h5 class="card-title mb-0">Loan Services</h5>
+                        </div>
+                        <p class="card-text">
+                            Access to low-interest loans for business development, emergency needs, 
+                            or personal investment opportunities.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-file-alt fa-2x text-info me-3"></i>
+                            <h5 class="card-title mb-0">Financial Records</h5>
+                        </div>
+                        <p class="card-text">
+                            Transparent financial tracking and reporting system that keeps 
+                            all members informed about group finances.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-project-diagram fa-2x text-warning me-3"></i>
+                            <h5 class="card-title mb-0">Group Projects</h5>
+                        </div>
+                        <p class="card-text">
+                            Participate in collective investment projects and community 
+                            development initiatives for mutual benefit.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

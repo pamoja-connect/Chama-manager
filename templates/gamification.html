@@ -1,0 +1,149 @@
+
+{% extends "base.html" %}
+
+{% block title %}My Badges & Points - Pamoja Agencies SHG{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-trophy text-warning me-2"></i>
+                    My Badges & Points
+                </h1>
+                <p class="text-muted">Track your achievements and progress in the group</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Level and Points -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-star me-2"></i>
+                        Your Level & Points
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="level-badge mb-3">
+                        <h2 class="level-{{ user_points.level.lower() }}">{{ user_points.level }}</h2>
+                        <p class="text-muted">Current Level</p>
+                    </div>
+                    <div class="points-display">
+                        <h3 class="text-primary">{{ user_points.total_points }}</h3>
+                        <p class="text-muted">Total Points</p>
+                    </div>
+                    <div class="progress mb-3">
+                        {% set next_level_points = 150 if user_points.level == 'Bronze' else (300 if user_points.level == 'Silver' else (500 if user_points.level == 'Gold' else 1000)) %}
+                        {% set progress_percentage = (user_points.total_points / next_level_points * 100) if user_points.level != 'Platinum' else 100 %}
+                        <div class="progress-bar" style="width: {{ progress_percentage }}%"></div>
+                    </div>
+                    {% if user_points.level != 'Platinum' %}
+                    <small class="text-muted">
+                        {{ next_level_points - user_points.total_points }} points to next level
+                    </small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-medal me-2"></i>
+                        Earned Badges ({{ user_badges|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if user_badges %}
+                        <div class="row">
+                            {% for user_badge in user_badges %}
+                            <div class="col-6 col-md-4 mb-3 text-center">
+                                <div class="badge-item badge-earned">
+                                    <i class="{{ user_badge.badge.icon }} fa-2x text-warning mb-2"></i>
+                                    <h6>{{ user_badge.badge.name }}</h6>
+                                    <small class="text-muted">+{{ user_badge.points_earned }} points</small>
+                                    <small class="d-block text-muted">{{ user_badge.earned_date.strftime('%b %Y') }}</small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-medal fa-3x mb-3 opacity-50"></i>
+                            <p>No badges earned yet. Keep participating to earn your first badge!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Available Badges -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        All Available Badges
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for badge in all_badges %}
+                        {% set user_has_badge = user_badges|selectattr('badge_id', 'equalto', badge.id)|list|length > 0 %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card badge-card {{ 'earned' if user_has_badge else 'not-earned' }}">
+                                <div class="card-body text-center">
+                                    <i class="{{ badge.icon }} fa-2x mb-2 {{ 'text-warning' if user_has_badge else 'text-muted' }}"></i>
+                                    <h6>{{ badge.name }}</h6>
+                                    <p class="small text-muted">{{ badge.description }}</p>
+                                    <span class="badge {{ 'bg-success' if user_has_badge else 'bg-secondary' }}">
+                                        {{ badge.points_value }} points
+                                    </span>
+                                    {% if user_has_badge %}
+                                    <div class="mt-2">
+                                        <i class="fas fa-check-circle text-success"></i>
+                                        <small class="text-success">Earned!</small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.level-bronze { color: #cd7f32; }
+.level-silver { color: #c0c0c0; }
+.level-gold { color: #ffd700; }
+.level-platinum { color: #e5e4e2; }
+
+.badge-card.earned {
+    border: 2px solid #28a745;
+    background: linear-gradient(135deg, #f8fff8 0%, #e8f5e8 100%);
+}
+
+.badge-card.not-earned {
+    border: 1px solid #dee2e6;
+    opacity: 0.7;
+}
+
+.badge-item {
+    padding: 1rem;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #fff9c4 0%, #f0e68c 100%);
+    border: 2px solid #ffd700;
+}
+</style>
+{% endblock %}

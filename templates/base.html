@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Pamoja Agencies SHG{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#764ba2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Pamoja SHG">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='uploads/20250909_175634_IMG-20250909-WA0031.jpg') }}">
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    {% if current_user.is_authenticated %}
+    <nav class="navbar navbar-expand-lg navbar-dark shadow" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="container">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="{{ url_for('index') }}">
+                <img src="{{ url_for('static', filename='uploads/pamoja_logo.png') }}"
+                         alt="Pamoja Agencies Logo"
+                         style="height: 40px; width: auto; margin-right: 10px; border-radius: 5px;"
+                         onerror="this.src='{{ url_for('static', filename='uploads/20250909_175634_IMG-20250909-WA0031.jpg') }}'">
+                Pamoja Agencies SHG
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">
+                                <i class="fas fa-tachometer-alt"></i> Dashboard
+                            </a>
+                        </li>
+                        {% if has_permission(current_user, 'view_members') or current_user.role == 'Member' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('voting') }}">
+                                <i class="fas fa-vote-yea"></i> Voting & Polls
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('gamification') }}">
+                                <i class="fas fa-trophy me-1"></i>Badges & Points
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% if current_user.role in ['Admin', 'Treasurer', 'Secretary'] %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('members') }}">
+                            <i class="fas fa-users me-1"></i>Members
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('contributions') }}">
+                            <i class="fas fa-piggy-bank me-1"></i>Savings
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('loans') }}">
+                            <i class="fas fa-hand-holding-usd me-1"></i>Loans
+                        </a>
+                    </li>
+
+                    {% if current_user.role in ['Admin', 'Treasurer'] or current_user.role == 'Member' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('fines') }}">
+                            <i class="fas fa-gavel me-1"></i>Fines
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('welfare') }}">
+                            <i class="fas fa-heart me-1"></i>Welfare
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('announcements') }}">
+                            <i class="fas fa-bullhorn me-1"></i>Announcements
+                        </a>
+                    </li>
+
+                    {% if current_user.role in ['Admin', 'Secretary'] %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('meetings') }}">
+                            <i class="fas fa-clipboard-list me-1"></i>Meetings
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('documents') }}">
+                            <i class="fas fa-folder-open me-1"></i>Documents
+                        </a>
+                    </li>
+
+                    {% if current_user.role in ['Admin', 'Treasurer'] %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('reports') }}">
+                            <i class="fas fa-chart-bar me-1"></i>Reports
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.role == 'Admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('activity_log') }}">
+                            <i class="fas fa-history me-1"></i>Activity Log
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.role in ['Admin', 'Chairman'] %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('membership_applications') }}">
+                            <i class="fas fa-user-plus me-1"></i>Applications
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <button class="btn btn-outline-light btn-sm me-2" onclick="shareApp()" title="Share App">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button id="installBtn" class="btn btn-outline-light btn-sm me-2" onclick="installPWA()" style="display: none;" title="Install App">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i>
+                            {{ current_user.full_name }}
+                            <span class="badge bg-secondary ms-2">{{ current_user.role }}</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('profile') }}">
+                                <i class="fas fa-user me-2"></i>Profile
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('receipts') }}">
+                                <i class="fas fa-receipt me-2"></i>{% if current_user.role in ['Admin', 'Treasurer'] %}All Receipts{% else %}My Receipts{% endif %}
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="shareApp()">
+                                <i class="fas fa-share-alt me-2"></i>Share App
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Flash Messages -->
+    <div class="container mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Back Button (shown on all pages except dashboard and index) -->
+        {% if current_user.is_authenticated and request.endpoint not in ['dashboard', 'index'] %}
+        <div class="container mt-3">
+            <button onclick="window.history.back()" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-2"></i>Back
+            </button>
+        </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-5 py-4" style="background-color: var(--pamoja-primary); color: white;">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-users-cog me-2"></i>Pamoja Agencies SHG</h5>
+                    <p class="mb-0">Self-Help Group Management System</p>
+                    <small class="text-muted">Established 2023</small>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0">
+                        <i class="fas fa-envelope me-2"></i>
+                        <a href="mailto:pamojaagenciesshg@gmail.com" class="text-light text-decoration-none">
+                            pamojaagenciesshg@gmail.com
+                        </a>
+                    </p>
+                    <small class="text-muted">© {{ datetime.now().year }} Pamoja Agencies. All rights reserved.</small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <!-- Template filters -->
+    <script>
+        // Add JSON filter for Jinja templates
+        window.fromJson = function(jsonString) {
+            try {
+                return JSON.parse(jsonString);
+            } catch (e) {
+                return {};
+            }
+        };
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+  </html>

@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Pamoja Agencies SHG{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <!-- Welcome Header with Hero Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 text-white position-relative overflow-hidden" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 200px;">
+
+                <div class="card-body position-relative">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h1 class="card-title mb-2 fw-bold">
+                                Welcome, {{ current_user.full_name }}!
+                            </h1>
+                            <p class="card-text mb-3 fs-5">
+                                <i class="fas fa-user-tag me-2"></i>{{ current_user.role }}
+                                <span class="ms-4">
+                                    <i class="fas fa-calendar me-2"></i>{{ datetime.now().strftime('%B %d, %Y') }}
+                                </span>
+                            </p>
+                            {% if current_user.role == 'Member' and (user_data.loan_balance > 0 or user_data.unpaid_fines|length > 0) %}
+                            <div class="alert alert-warning bg-warning bg-opacity-25 border-warning text-white">
+                                <h6><i class="fas fa-exclamation-triangle me-2"></i>Outstanding Debts</h6>
+                                {% if user_data.loan_balance > 0 %}
+                                <p class="mb-1">Loan Balance: <strong>{{ format_currency(user_data.loan_balance) }}</strong></p>
+                                {% endif %}
+                                {% if user_data.unpaid_fines|length > 0 %}
+                                <p class="mb-0">Unpaid Fines: <strong>{{ format_currency(user_data.total_unpaid_fines) }}</strong></p>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <i class="fas fa-tachometer-alt fa-4x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards with Gradients -->
+    <div class="row g-4 mb-4">
+        {% if current_user.role != 'Member' %}
+        <!-- Admin/Treasurer/Secretary View -->
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-1">Total Members</h6>
+                            <h3 class="mb-0">{{ stats.total_members }}</h3>
+                        </div>
+                        <i class="fas fa-users fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-white" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-1">Total Contributions</h6>
+                            <h3 class="mb-0">{{ format_currency(stats.total_contributions) }}</h3>
+                        </div>
+                        <i class="fas fa-piggy-bank fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-white" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-1">Active Loans</h6>
+                            <h3 class="mb-0">{{ format_currency(stats.active_loans_amount) }}</h3>
+                        </div>
+                        <i class="fas fa-hand-holding-usd fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-white" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-1">Group Balance</h6>
+                            <h3 class="mb-0">{{ format_currency(stats.group_balance) }}</h3>
+                        </div>
+                        <i class="fas fa-wallet fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- Member View with Debt Alerts -->
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-body text-center">
+                    <i class="fas fa-piggy-bank fa-3x mb-3"></i>
+                    <h3 class="card-title">{{ format_currency(user_data.total_contributions) }}</h3>
+                    <p class="card-text">My Savings</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-white {% if user_data.loan_balance > 0 %}shadow-lg{% endif %}"
+                 style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="card-body text-center">
+                    <i class="fas fa-credit-card fa-3x mb-3"></i>
+                    <h3 class="card-title">{{ format_currency(user_data.loan_balance) }}</h3>
+                    <p class="card-text">Loan Balance</p>
+                    {% if user_data.loan_balance > 0 %}
+                    <small class="badge bg-warning text-dark">Outstanding Debt</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-white {% if user_data.unpaid_fines|length > 0 %}shadow-lg{% endif %}"
+                 style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);">
+                <div class="card-body text-center text-dark">
+                    <i class="fas fa-gavel fa-3x mb-3"></i>
+                    <h3 class="card-title">{{ user_data.unpaid_fines|length }}</h3>
+                    <p class="card-text">Unpaid Fines</p>
+                    {% if user_data.unpaid_fines|length > 0 %}
+                    <small class="badge bg-danger">{{ format_currency(user_data.total_unpaid_fines) }}</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card text-white" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
+                <div class="card-body text-center text-dark">
+                    <i class="fas fa-chart-pie fa-3x mb-3"></i>
+                    <h3 class="card-title">{{ format_currency(stats.group_balance) }}</h3>
+                    <p class="card-text">Group Balance</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if current_user.role == 'Member' and (user_data.loan_balance > 0 or user_data.unpaid_fines|length > 0) %}
+    <!-- Debt Reminder Section for Members -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Payment Reminder
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if user_data.loan_balance > 0 %}
+                        <div class="col-md-6">
+                            <h6 class="text-danger">Outstanding Loans</h6>
+                            {% for loan in user_data.active_loans %}
+                            <div class="alert alert-danger">
+                                <strong>Loan Balance:</strong> {{ format_currency(loan.remaining_amount) }}<br>
+                                <strong>Due Date:</strong> {{ loan.due_date.strftime('%B %d, %Y') if loan.due_date else 'Not set' }}
+                                {% if loan.due_date and loan.due_date < datetime.now() %}
+                                <br><span class="badge bg-danger">OVERDUE</span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if user_data.unpaid_fines|length > 0 %}
+                        <div class="col-md-6">
+                            <h6 class="text-warning">Unpaid Fines</h6>
+                            {% for fine in user_data.unpaid_fines %}
+                            <div class="alert alert-warning">
+                                <strong>{{ fine.fine_type }}:</strong> {{ format_currency(fine.amount) }}<br>
+                                <strong>Date:</strong> {{ fine.date_issued.strftime('%B %d, %Y') }}<br>
+                                <strong>Reason:</strong> {{ fine.reason }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="text-center mt-3">
+                        <p class="text-muted">Contact the treasurer or admin to arrange payment</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- User-specific content for Members -->
+        {% if current_user.role == 'Member' %}
+
+        <!-- Debt Reminders -->
+        {% if user_data.unpaid_fines or user_data.loan_balance > 0 %}
+        <div class="row mb-4">
+            <div class="col-12">
+                {% for fine in user_data.unpaid_fines %}
+                <div class="debt-reminder alert alert-warning alert-permanent" data-type="fine" data-id="{{ fine.id }}">
+                    <h6><i class="fas fa-exclamation-triangle me-2"></i>Unpaid Fine</h6>
+                    <p class="mb-2">{{ fine.fine_type }}: {{ format_currency(fine.amount) }}</p>
+                    <small class="text-muted">Issued: {{ format_date(fine.date_issued) }}</small>
+                </div>
+                {% endfor %}
+
+                {% if user_data.loan_balance > 0 %}
+                <div class="debt-reminder alert alert-info alert-permanent" data-type="loan" data-id="active">
+                    <h6><i class="fas fa-money-bill-wave me-2"></i>Outstanding Loan</h6>
+                    <p class="mb-2">Total Balance: {{ format_currency(user_data.loan_balance) }}</p>
+                    <small class="text-muted">Make your payments on time to avoid late fees!</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-piggy-bank me-2"></i>
+                            My Financial Summary
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <h4 class="text-success">{{ format_currency(user_data.total_contributions) }}</h4>
+                                <small class="text-muted">Total Contributions</small>
+                            </div>
+                            <div class="col-6">
+                                <h4 class="text-warning">{{ format_currency(user_data.loan_balance) }}</h4>
+                                <small class="text-muted">Loan Balance</small>
+                            </div>
+                        </div>
+
+                        <!-- Loan Limit Display -->
+                        {% set loan_limit = user_data.total_contributions * 0.75 %}
+                        <div class="mt-3 pt-3 border-top">
+                            <div class="text-center">
+                                <h6 class="text-info">{{ format_currency(loan_limit) }}</h6>
+                                <small class="text-muted">Your Loan Limit (75% of contributions)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+
+    <div class="row g-4">
+        <!-- Recent Announcements -->
+        <div class="col-lg-8">
+            <div class="card h-100 shadow">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-bullhorn me-2"></i>Recent Announcements
+                        </h5>
+                        <a href="{{ url_for('announcements') }}" class="btn btn-sm btn-outline-light">
+                            View All
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if recent_announcements %}
+                        {% for announcement in recent_announcements %}
+                        <div class="d-flex align-items-start mb-3 {% if not loop.last %}border-bottom pb-3{% endif %}">
+                            {% if announcement.is_urgent %}
+                            <i class="fas fa-exclamation-triangle text-warning fa-lg me-3 mt-1"></i>
+                            {% else %}
+                            <i class="fas fa-info-circle text-info fa-lg me-3 mt-1"></i>
+                            {% endif %}
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">
+                                    {{ announcement.title }}
+                                    {% if announcement.is_urgent %}
+                                        <span class="badge bg-warning text-dark ms-2">Urgent</span>
+                                    {% endif %}
+                                </h6>
+                                <p class="text-muted mb-1">{{ announcement.content[:100] }}{% if announcement.content|length > 100 %}...{% endif %}</p>
+                                <small class="text-muted">
+                                    <i class="fas fa-user me-1"></i>{{ announcement.creator.full_name }}
+                                    <i class="fas fa-clock ms-3 me-1"></i>{{ format_datetime(announcement.date_created) }}
+                                </small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-bullhorn fa-3x mb-3"></i>
+                            <p>No announcements yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions / Pending Items -->
+        <div class="col-lg-4">
+            <div class="card h-100 shadow">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if current_user.role == 'Member' %}
+                        <!-- Member Actions -->
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('apply_loan') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-hand-holding-usd me-2"></i>Apply for Loan
+                            </a>
+                            <a href="{{ url_for('contributions') }}" class="btn btn-outline-success">
+                                <i class="fas fa-eye me-2"></i>View My Savings
+                            </a>
+                            <a href="{{ url_for('documents') }}" class="btn btn-outline-info">
+                                <i class="fas fa-download me-2"></i>Download Documents
+                            </a>
+                            <a href="{{ url_for('receipts') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-receipt me-2"></i>My Receipts
+                            </a>
+                        </div>
+
+                    {% elif has_permission(current_user, 'approve_loans') or current_user.role == 'Chairman' %}
+                        <!-- Treasurer/Admin/Chairman Actions -->
+                        {% if pending_loans %}
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-clock me-2"></i>Pending Loan Applications</h6>
+                            <p class="mb-2">{{ pending_loans|length }} loan(s) waiting for approval</p>
+                            <a href="{{ url_for('loans') }}" class="btn btn-sm btn-primary">
+                                Review Applications
+                            </a>
+                        </div>
+                        {% endif %}
+
+                        {% if current_user.role in ['Admin', 'Chairman'] %}
+                        <div class="alert alert-success">
+                            <h6><i class="fas fa-user-plus me-2"></i>Membership Applications</h6>
+                            <p class="mb-2">Check for new membership requests</p>
+                            <a href="{{ url_for('membership_applications') }}" class="btn btn-sm btn-success">
+                                View Applications
+                            </a>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('add_contribution') }}" class="btn btn-outline-success">
+                                <i class="fas fa-plus me-2"></i>Record Savings
+                            </a>
+                            <a href="{{ url_for('loan_repayment') }}" class="btn btn-outline-warning">
+                                <i class="fas fa-money-bill-wave me-2"></i>Record Repayment
+                            </a>
+                            <a href="{{ url_for('reports') }}" class="btn btn-outline-info">
+                                <i class="fas fa-chart-bar me-2"></i>View Reports
+                            </a>
+                            {% if current_user.role == 'Admin' %}
+                            <a href="{{ url_for('activity_log') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-history me-2"></i>Activity Log
+                            </a>
+                            {% endif %}
+                        </div>
+
+                    {% elif has_permission(current_user, 'manage_announcements') %}
+                        <!-- Secretary Actions -->
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('add_announcement') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-bullhorn me-2"></i>Create Announcement
+                            </a>
+                            <a href="{{ url_for('add_meeting') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-clipboard-list me-2"></i>Record Meeting
+                            </a>
+                            <a href="{{ url_for('upload_document') }}" class="btn btn-outline-info">
+                                <i class="fas fa-upload me-2"></i>Upload Document
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Member Quick Stats (for non-members) -->
+    {% if current_user.role != 'Member' %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Group Overview
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3 text-center">
+                            <div class="border rounded p-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                <i class="fas fa-user-tie fa-2x mb-2"></i>
+                                <h6>Admins</h6>
+                                <h4>{{ stats.total_admins }}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="border rounded p-3" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+                                <i class="fas fa-calculator fa-2x mb-2"></i>
+                                <h6>Treasurers</h6>
+                                <h4>{{ stats.total_treasurers }}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="border rounded p-3" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white;">
+                                <i class="fas fa-pen fa-2x mb-2"></i>
+                                <h6>Secretaries</h6>
+                                <h4>{{ stats.total_secretaries }}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="border rounded p-3" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white;">
+                                <i class="fas fa-users fa-2x mb-2"></i>
+                                <h6>Regular Members</h6>
+                                <h4>{{ stats.total_members - stats.total_admins - stats.total_treasurers - stats.total_secretaries }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

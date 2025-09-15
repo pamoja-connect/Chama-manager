@@ -1,1 +1,129 @@
 
+{% extends "base.html" %}
+
+{% block title %}Apply for Membership - Pamoja Agencies SHG{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h2 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>
+                        Membership Application
+                    </h2>
+                    <p class="mb-0 mt-2">Join Pamoja Agencies Self-Help Group</p>
+                </div>
+                
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Please fill out all fields accurately. Your application will be reviewed by our administrators.
+                    </div>
+                    
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                {{ form.full_name.label(class="form-label") }}
+                                {{ form.full_name(class="form-control") }}
+                                {% if form.full_name.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.full_name.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.email.label(class="form-label") }}
+                                {{ form.email(class="form-control") }}
+                                {% if form.email.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.email.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.phone.label(class="form-label") }}
+                                {{ form.phone(class="form-control") }}
+                                {% if form.phone.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.phone.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.id_number.label(class="form-label") }}
+                                {{ form.id_number(class="form-control") }}
+                                {% if form.id_number.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.id_number.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.location.label(class="form-label") }}
+                                {{ form.location(class="form-control") }}
+                                {% if form.location.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.location.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.occupation.label(class="form-label") }}
+                                {{ form.occupation(class="form-control") }}
+                                {% if form.occupation.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.occupation.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-12">
+                                {{ form.reason_for_joining.label(class="form-label") }}
+                                {{ form.reason_for_joining(class="form-control", rows="4", placeholder="Tell us why you want to join our self-help group and what you hope to achieve...") }}
+                                {% if form.reason_for_joining.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.reason_for_joining.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 text-center">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-paper-plane me-2"></i>Submit Application
+                            </button>
+                            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg ms-2">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

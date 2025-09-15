@@ -1,1 +1,243 @@
 
+{% extends "base.html" %}
+
+{% block title %}Voting - Pamoja Agencies SHG{% endblock %}
+
+{% block content %}
+<div class="container my-4 section-voting">
+    <div class="card shadow-lg border-0 mb-4" style="background: var(--gradient-voting);">
+        <div class="card-body text-white text-center py-4">
+            <h2 class="mb-0">
+                <i class="fas fa-vote-yea me-2"></i>Digital Voting & Proposals
+            </h2>
+        </div>
+    </div>
+
+    {% if action == 'Propose' %}
+    <!-- Proposal Creation Form -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-plus me-2"></i>Create New Proposal
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <label for="{{ form.title.id }}" class="form-label">{{ form.title.label.text }}</label>
+                        {{ form.title(class="form-control") }}
+                        {% for error in form.title.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="{{ form.proposal_type.id }}" class="form-label">{{ form.proposal_type.label.text }}</label>
+                        {{ form.proposal_type(class="form-select") }}
+                        {% for error in form.proposal_type.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.description.id }}" class="form-label">{{ form.description.label.text }}</label>
+                    {{ form.description(class="form-control", rows="4") }}
+                    {% for error in form.description.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="{{ form.voting_start.id }}" class="form-label">{{ form.voting_start.label.text }}</label>
+                        {{ form.voting_start(class="form-control", type="datetime-local") }}
+                        <small class="form-text text-muted">Select date and time when voting begins</small>
+                        {% for error in form.voting_start.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="{{ form.voting_end.id }}" class="form-label">{{ form.voting_end.label.text }}</label>
+                        {{ form.voting_end(class="form-control", type="datetime-local") }}
+                        <small class="form-text text-muted">Select date and time when voting ends</small>
+                        {% for error in form.voting_end.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="{{ form.minimum_participation.id }}" class="form-label">{{ form.minimum_participation.label.text }}</label>
+                        <div class="input-group">
+                            {{ form.minimum_participation(class="form-control") }}
+                            <span class="input-group-text">%</span>
+                        </div>
+                        {% for error in form.minimum_participation.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-2"></i>Create Proposal
+                    </button>
+                    <a href="{{ url_for('voting') }}" class="btn btn-secondary">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    {% if current_user.role in ['Admin', 'Chairman', 'Secretary'] %}
+    <div class="text-end mb-4">
+        <a href="{{ url_for('create_proposal') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Create Proposal
+        </a>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Active Proposals -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>Active Proposals
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if active_proposals %}
+                        {% for proposal in active_proposals %}
+                        <div class="card voting-card mb-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">{{ proposal.title }}</h6>
+                                <span class="badge bg-primary">{{ proposal.proposal_type.title() }}</span>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">{{ proposal.description[:200] }}{% if proposal.description|length > 200 %}...{% endif %}</p>
+                                
+                                <div class="row text-center mb-3">
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Voting Ends</small>
+                                        <br><strong>{{ proposal.voting_end.strftime('%B %d, %Y') }}</strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Created By</small>
+                                        <br><strong>{{ proposal.creator.full_name }}</strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Min Participation</small>
+                                        <br><strong>{{ proposal.minimum_participation }}%</strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Total Votes</small>
+                                        <br><strong>{{ proposal.votes|length }}</strong>
+                                    </div>
+                                </div>
+
+                                <!-- Voting Progress -->
+                                {% set total_votes = proposal.votes|length %}
+                                {% set yes_votes = proposal.votes|selectattr('vote_choice', 'equalto', 'yes')|list|length %}
+                                {% set no_votes = proposal.votes|selectattr('vote_choice', 'equalto', 'no')|list|length %}
+                                {% set abstain_votes = proposal.votes|selectattr('vote_choice', 'equalto', 'abstain')|list|length %}
+                                
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small>Yes ({{ yes_votes }})</small>
+                                        <small>No ({{ no_votes }})</small>
+                                        <small>Abstain ({{ abstain_votes }})</small>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar vote-yes" style="width: {{ (yes_votes / total_votes * 100) if total_votes > 0 else 0 }}%"></div>
+                                        <div class="progress-bar vote-no" style="width: {{ (no_votes / total_votes * 100) if total_votes > 0 else 0 }}%"></div>
+                                        <div class="progress-bar vote-abstain" style="width: {{ (abstain_votes / total_votes * 100) if total_votes > 0 else 0 }}%"></div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <a href="{{ url_for('cast_vote', proposal_id=proposal.id) }}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-vote-yea me-1"></i>Vote Now
+                                    </a>
+                                    <a href="{{ url_for('view_proposal', proposal_id=proposal.id) }}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-eye me-1"></i>View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-vote-yea fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No active proposals</h5>
+                        <p class="text-muted">Proposals for voting will appear here</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Decisions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Recent Decisions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_proposals %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Proposal</th>
+                                    <th>Type</th>
+                                    <th>Result</th>
+                                    <th>Participation</th>
+                                    <th>Date Closed</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for proposal in recent_proposals %}
+                                {% set total_votes = proposal.votes|length %}
+                                {% set yes_votes = proposal.votes|selectattr('vote_choice', 'equalto', 'yes')|list|length %}
+                                {% set total_members = 50 %}  {# This should be dynamic #}
+                                {% set participation = (total_votes / total_members * 100) if total_members > 0 else 0 %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ proposal.title }}</strong>
+                                        <br><small class="text-muted">{{ proposal.description[:80] }}...</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ proposal.proposal_type.title() }}</span>
+                                    </td>
+                                    <td>
+                                        {% if yes_votes > (total_votes / 2) %}
+                                            <span class="badge bg-success">Approved</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ "%.1f"|format(participation) }}%</td>
+                                    <td>{{ proposal.voting_end.strftime('%b %d, %Y') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No completed proposals yet</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

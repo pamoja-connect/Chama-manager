@@ -1,1 +1,100 @@
+{% extends "base.html" %}
 
+{% block title %}Login - Pamoja Agencies SHG{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center min-vh-100 align-items-center">
+        <div class="col-md-6 col-lg-4 mx-auto">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <img src="{{ url_for('static', filename='images/InShot_20250326_115857211.png') }}" alt="Pamoja Agencies Logo" class="logo-large" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <div style="display: none;">
+                            <i class="fas fa-users-cog fa-3x text-primary mb-3"></i>
+                        </div>
+                        <h3 class="card-title">Pamoja Agencies SHG</h3>
+                        <p class="text-muted">Member Login Portal</p>
+                    </div>
+
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+
+                        <div class="mb-3">
+                            {{ form.username.label(class="form-label") }}
+                            {{ form.username(class="form-select") }}
+                            {% if form.username.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.username.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            {{ form.password.label(class="form-label") }}
+                            <div class="input-group">
+                                {{ form.password(class="form-control", id="passwordInput") }}
+                                <button type="button" class="btn btn-outline-secondary" onclick="togglePassword()">
+                                    <i class="fas fa-eye" id="toggleIcon"></i>
+                                </button>
+                            </div>
+                            {% if form.password.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.password.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-sign-in-alt me-2"></i>Login
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="text-center mt-4">
+                        <a href="{{ url_for('index') }}" class="text-decoration-none">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Home
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="card mt-4">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Need Help?</h6>
+                    <p class="card-text small text-muted">
+                        If you're having trouble logging in or need your account activated,
+                        please contact the administrator.
+                    </p>
+                    <a href="mailto:pamojaagenciesshg@gmail.com" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-envelope me-1"></i>Contact Admin
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePassword() {
+    const passwordInput = document.getElementById('passwordInput');
+    const toggleIcon = document.getElementById('toggleIcon');
+
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+</script>
+{% endblock %}

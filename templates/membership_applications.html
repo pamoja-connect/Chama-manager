@@ -1,1 +1,190 @@
+{% extends "base.html" %}
 
+{% block title %}Membership Applications - Pamoja Agencies SHG{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>
+                    <i class="fas fa-user-plus me-2"></i>Membership Applications
+                </h1>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Pending and Recent Applications
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if applications %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Location</th>
+                                    <th>Occupation</th>
+                                    <th>Status</th>
+                                    <th>Applied</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for app in applications %}
+                                <tr>
+                                    <td class="fw-bold">{{ app.full_name }}</td>
+                                    <td>{{ app.email }}</td>
+                                    <td>{{ app.phone }}</td>
+                                    <td>{{ app.location }}</td>
+                                    <td>{{ app.occupation }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'warning' if app.status == 'Pending' else 'success' if app.status == 'Approved' else 'danger' }}">
+                                            {{ app.status }}
+                                        </span>
+                                    </td>
+                                    <td>{{ app.application_date.strftime('%b %d, %Y') }}</td>
+                                    <td>
+                                        {% if app.status == 'Pending' %}
+                                        <button class="btn btn-sm btn-outline-success me-1" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#reviewModal{{ app.id }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+
+                                        <!-- Review Modal -->
+                                        <div class="modal fade" id="reviewModal{{ app.id }}" tabindex="-1">
+                                            <div class="modal-dialog modal-lg">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Review Application - {{ app.full_name }}</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="row g-3">
+                                                            <div class="col-md-6">
+                                                                <strong>Full Name:</strong> {{ app.full_name }}
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <strong>Email:</strong> {{ app.email }}
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <strong>Phone:</strong> {{ app.phone }}
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <strong>ID Number:</strong> {{ app.id_number }}
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <strong>Location:</strong> {{ app.location }}
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <strong>Occupation:</strong> {{ app.occupation }}
+                                                            </div>
+                                                            <div class="col-12">
+                                                                <strong>Reason for Joining:</strong>
+                                                                <p class="mt-2 p-3 bg-light rounded">{{ app.reason_for_joining }}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <!-- Approve Button -->
+                                                        <form method="POST" action="{{ url_for('review_membership_application', app_id=app.id) }}" class="d-inline">
+                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                            <button type="submit" name="action" value="approve" class="btn btn-success me-2" 
+                                                                    onclick="return confirm('Are you sure you want to approve this application?')">
+                                                                <i class="fas fa-check me-1"></i>Approve
+                                                            </button>
+                                                        </form>
+                                                        
+                                                        <!-- Reject Button -->
+                                                        <button type="button" class="btn btn-danger me-2" 
+                                                                onclick="showRejectForm({{ app.id }})">
+                                                            <i class="fas fa-times me-1"></i>Reject
+                                                        </button>
+                                                        
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        
+                                                        <!-- Reject Form (Initially Hidden) -->
+                                                        <div id="rejectForm{{ app.id }}" class="w-100 mt-3" style="display: none;">
+                                                            <hr>
+                                                            <form method="POST" action="{{ url_for('review_membership_application', app_id=app.id) }}">
+                                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                                <input type="hidden" name="action" value="reject">
+                                                                <div class="form-group mb-3">
+                                                                    <label for="rejection_reason{{ app.id }}" class="form-label text-danger">
+                                                                        <strong>Reason for Rejection:</strong>
+                                                                    </label>
+                                                                    <textarea class="form-control" id="rejection_reason{{ app.id }}" 
+                                                                              name="rejection_reason" rows="3" 
+                                                                              placeholder="Please provide a clear reason for rejecting this application..." required></textarea>
+                                                                </div>
+                                                                <div class="d-flex gap-2">
+                                                                    <button type="submit" class="btn btn-danger" 
+                                                                            onclick="return confirm('Are you sure you want to reject this application?')">
+                                                                        <i class="fas fa-times me-1"></i>Confirm Rejection
+                                                                    </button>
+                                                                    <button type="button" class="btn btn-secondary" 
+                                                                            onclick="hideRejectForm({{ app.id }})">
+                                                                        Cancel Rejection
+                                                                    </button>
+                                                                </div>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {% else %}
+                                        <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-user-plus fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No membership applications found</h5>
+                        <p class="text-muted">Applications from potential members will appear here</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showRejectForm(appId) {
+    // Hide the main action buttons
+    const modal = document.getElementById('reviewModal' + appId);
+    const rejectForm = document.getElementById('rejectForm' + appId);
+    
+    // Show the reject form
+    rejectForm.style.display = 'block';
+    
+    // Scroll to the reject form
+    rejectForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    // Focus on the textarea
+    const textarea = document.getElementById('rejection_reason' + appId);
+    setTimeout(() => textarea.focus(), 100);
+}
+
+function hideRejectForm(appId) {
+    const rejectForm = document.getElementById('rejectForm' + appId);
+    rejectForm.style.display = 'none';
+    
+    // Clear the textarea
+    const textarea = document.getElementById('rejection_reason' + appId);
+    textarea.value = '';
+}
+</script>
+{% endblock %}

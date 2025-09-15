@@ -1,1 +1,235 @@
 
+{% extends "base.html" %}
+
+{% block title %}Welfare - Pamoja Agencies SHG{% endblock %}
+
+{% block content %}
+<div class="container my-4 section-welfare">
+    <div class="card shadow-lg border-0 mb-4" style="background: var(--gradient-welfare);">
+        <div class="card-body text-white text-center py-4">
+            <h2 class="mb-0">
+                <i class="fas fa-heart me-2"></i>Welfare Management
+            </h2>
+        </div>
+    </div>
+
+    {% if not is_member_view %}
+    <!-- Welfare Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-primary">{{ format_currency(stats.total_contributions) }}</h3>
+                    <p class="mb-0">Total Contributions</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-danger">{{ format_currency(stats.total_expenses) }}</h3>
+                    <p class="mb-0">Total Expenses</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-success">{{ format_currency(stats.balance) }}</h3>
+                    <p class="mb-0">Balance</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-info">{{ stats.beneficiaries }}</h3>
+                    <p class="mb-0">Beneficiaries</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-hand-holding-heart me-2"></i>Welfare Contributions
+                    </h5>
+                    {% if has_permission(current_user, 'record_contributions') %}
+                    <a href="{{ url_for('welfare_contribute') }}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus me-1"></i>Add
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if welfare_contributions %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Member</th>
+                                    <th>Amount</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for contrib in welfare_contributions[-10:] %}
+                                <tr>
+                                    <td>{{ contrib.member.full_name }}</td>
+                                    <td>{{ format_currency(contrib.amount) }}</td>
+                                    <td>{{ contrib.date_recorded.strftime('%m/%d/%y') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No welfare contributions yet</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if not is_member_view %}
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-hands-helping me-2"></i>Welfare Expenses
+                    </h5>
+                    {% if has_permission(current_user, 'manage_finances') %}
+                    <a href="{{ url_for('welfare_expense') }}" class="btn btn-sm btn-success">
+                        <i class="fas fa-plus me-1"></i>Add
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if welfare_expenses %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Beneficiary</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for expense in welfare_expenses[-10:] %}
+                                <tr>
+                                    <td>{{ expense.beneficiary.full_name }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ expense.expense_type }}</span>
+                                    </td>
+                                    <td>{{ format_currency(expense.amount) }}</td>
+                                    <td>{{ expense.date_disbursed.strftime('%m/%d/%y') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No welfare expenses yet</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Form Modals for Add Actions -->
+    {% if form and action %}
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        {% if action == 'Contribute' %}
+                            <i class="fas fa-hand-holding-heart me-2"></i>Add Welfare Contribution
+                        {% elif action == 'Expense' %}
+                            <i class="fas fa-hands-helping me-2"></i>Record Welfare Expense
+                        {% endif %}
+                    </h5>
+                    <a href="{{ url_for('welfare') }}" class="btn-close"></a>
+                </div>
+                <form method="POST">
+                    <div class="modal-body">
+                        {{ form.hidden_tag() }}
+                        
+                        {% if action == 'Contribute' %}
+                            <div class="mb-3">
+                                {{ form.member_id.label(class="form-label") }}
+                                {{ form.member_id(class="form-select") }}
+                                {% if form.member_id.errors %}
+                                    <div class="text-danger">{{ form.member_id.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.amount.label(class="form-label") }}
+                                {{ form.amount(class="form-control", step="0.01", min="0.01") }}
+                                {% if form.amount.errors %}
+                                    <div class="text-danger">{{ form.amount.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.notes.label(class="form-label") }}
+                                {{ form.notes(class="form-control", rows="3") }}
+                                {% if form.notes.errors %}
+                                    <div class="text-danger">{{ form.notes.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                        
+                        {% elif action == 'Expense' %}
+                            <div class="mb-3">
+                                {{ form.beneficiary_id.label(class="form-label") }}
+                                {{ form.beneficiary_id(class="form-select") }}
+                                {% if form.beneficiary_id.errors %}
+                                    <div class="text-danger">{{ form.beneficiary_id.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.expense_type.label(class="form-label") }}
+                                {{ form.expense_type(class="form-select") }}
+                                {% if form.expense_type.errors %}
+                                    <div class="text-danger">{{ form.expense_type.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.amount.label(class="form-label") }}
+                                {{ form.amount(class="form-control", step="0.01", min="0.01") }}
+                                {% if form.amount.errors %}
+                                    <div class="text-danger">{{ form.amount.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                {{ form.description.label(class="form-label") }}
+                                {{ form.description(class="form-control", rows="4") }}
+                                {% if form.description.errors %}
+                                    <div class="text-danger">{{ form.description.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                        <a href="{{ url_for('welfare') }}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            {% if action == 'Contribute' %}Save Contribution{% else %}Record Expense{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

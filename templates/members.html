@@ -1,1 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Members - Pamoja Agencies SHG{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>
+                    <i class="fas fa-users me-2"></i>Members Management
+                </h1>
+                {% if current_user.role == 'Admin' %}
+                <a href="{{ url_for('add_member') }}" class="btn btn-primary">
+                    <i class="fas fa-user-plus me-2"></i>Add New Member
+                </a>
+                {% endif %}
+            </div>
+            
+            <!-- Add/Edit Member Form -->
+            {% if form %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-{{ 'user-plus' if action == 'Add' else 'user-edit' }} me-2"></i>
+                        {{ action }} Member
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                {{ form.username.label(class="form-label") }}
+                                {{ form.username(class="form-control") }}
+                                {% if form.username.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.username.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.full_name.label(class="form-label") }}
+                                {{ form.full_name(class="form-control") }}
+                                {% if form.full_name.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.full_name.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.email.label(class="form-label") }}
+                                {{ form.email(class="form-control") }}
+                                {% if form.email.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.email.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.phone.label(class="form-label") }}
+                                {{ form.phone(class="form-control") }}
+                                {% if form.phone.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.phone.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.role.label(class="form-label") }}
+                                {{ form.role(class="form-select") }}
+                                {% if form.role.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.role.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.password.label(class="form-label") }}
+                                {% if action == 'Edit' %}
+                                    <small class="text-muted">(Leave blank to keep current password)</small>
+                                {% endif %}
+                                {{ form.password(class="form-control") }}
+                                {% if form.password.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in form.password.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-2"></i>{{ action }} Member
+                            </button>
+                            <a href="{{ url_for('members') }}" class="btn btn-secondary ms-2">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Members List -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>All Members
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if members %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Role</th>
+                                    <th>Date Joined</th>
+                                    <th>Total Contributions</th>
+                                    {% if current_user.role == 'Admin' %}
+                                    <th>Actions</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for member in members %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                {{ member.full_name[0].upper() }}
+                                            </div>
+                                            <strong>{{ member.full_name }}</strong>
+                                        </div>
+                                    </td>
+                                    <td>{{ member.username }}</td>
+                                    <td>
+                                        <a href="mailto:{{ member.email }}" class="text-decoration-none">
+                                            {{ member.email }}
+                                        </a>
+                                    </td>
+                                    <td>{{ member.phone }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'danger' if member.role == 'Admin' else 'success' if member.role == 'Treasurer' else 'info' if member.role == 'Secretary' else 'secondary' }}">
+                                            {{ member.role }}
+                                        </span>
+                                    </td>
+                                    <td>{{ member.date_joined.strftime('%b %d, %Y') }}</td>
+                                    <td>{{ format_currency(member.get_total_contributions()) }}</td>
+                                    {% if current_user.role == 'Admin' %}
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('edit_member', member_id=member.id) }}" 
+                                               class="btn btn-outline-primary" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            {% if member.id != current_user.id %}
+                                            <a href="{{ url_for('deactivate_member', member_id=member.id) }}" 
+                                               class="btn btn-outline-danger" title="Deactivate"
+                                               onclick="return confirm('Are you sure you want to deactivate {{ member.full_name }}?')">
+                                                <i class="fas fa-user-slash"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No members found</h5>
+                        {% if current_user.role == 'Admin' %}
+                        <p class="text-muted">Start by adding your first member</p>
+                        <a href="{{ url_for('add_member') }}" class="btn btn-primary">
+                            <i class="fas fa-user-plus me-2"></i>Add Member
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Statistics Card -->
+            {% if members %}
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-users fa-2x mb-2"></i>
+                            <h4>{{ members|length }}</h4>
+                            <p class="mb-0">Total Members</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-user-tie fa-2x mb-2"></i>
+                            <h4>{{ members|selectattr('role', 'equalto', 'Admin')|list|length }}</h4>
+                            <p class="mb-0">Admins</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-calculator fa-2x mb-2"></i>
+                            <h4>{{ members|selectattr('role', 'equalto', 'Treasurer')|list|length }}</h4>
+                            <p class="mb-0">Treasurers</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-pen fa-2x mb-2"></i>
+                            <h4>{{ members|selectattr('role', 'equalto', 'Secretary')|list|length }}</h4>
+                            <p class="mb-0">Secretaries</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
 

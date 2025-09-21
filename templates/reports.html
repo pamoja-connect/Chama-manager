@@ -11,7 +11,6 @@
                 <h1>
                     <i class="fas fa-chart-bar me-2"></i>Financial Reports & Analytics
                 </h1>
-
                 <div class="btn-group">
                     <a href="{{ url_for('export_report', format='pdf') }}" class="btn btn-outline-primary">
                         <i class="fas fa-file-pdf me-2"></i>Export PDF
@@ -28,37 +27,34 @@
                     <div class="card bg-success text-white">
                         <div class="card-body text-center">
                             <i class="fas fa-piggy-bank fa-3x mb-3"></i>
-                            <h3 class="card-title">{{ format_currency(stats.total_contributions) }}</h3>
+                            <h3 class="card-title">{{ format_currency(stats.total_contributions or 0) }}</h3>
                             <p class="card-text">Total Contributions</p>
                         </div>
                     </div>
                 </div>
-
                 <div class="col-md-6 col-lg-3">
                     <div class="card bg-warning text-white">
                         <div class="card-body text-center">
                             <i class="fas fa-hand-holding-usd fa-3x mb-3"></i>
-                            <h3 class="card-title">{{ format_currency(stats.active_loans_amount) }}</h3>
+                            <h3 class="card-title">{{ format_currency(stats.active_loans_amount or 0) }}</h3>
                             <p class="card-text">Active Loans</p>
                         </div>
                     </div>
                 </div>
-
                 <div class="col-md-6 col-lg-3">
                     <div class="card bg-danger text-white">
                         <div class="card-body text-center">
                             <i class="fas fa-gavel fa-3x mb-3"></i>
-                            <h3 class="card-title">{{ format_currency(stats.unpaid_fines) }}</h3>
+                            <h3 class="card-title">{{ format_currency(stats.unpaid_fines or 0) }}</h3>
                             <p class="card-text">Unpaid Fines</p>
                         </div>
                     </div>
                 </div>
-
                 <div class="col-md-6 col-lg-3">
                     <div class="card bg-primary text-white">
                         <div class="card-body text-center">
                             <i class="fas fa-chart-line fa-3x mb-3"></i>
-                            <h3 class="card-title">{{ format_currency(stats.group_balance) }}</h3>
+                            <h3 class="card-title">{{ format_currency(stats.group_balance or 0) }}</h3>
                             <p class="card-text">Group Balance</p>
                         </div>
                     </div>
@@ -80,7 +76,6 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- Loan Status Pie Chart -->
                 <div class="col-lg-4">
                     <div class="card">
@@ -111,28 +106,28 @@
                                 <div class="col-6">
                                     <div class="border rounded p-3 text-center">
                                         <i class="fas fa-users text-primary fa-2x mb-2"></i>
-                                        <h4 class="text-primary">{{ stats.total_members }}</h4>
+                                        <h4 class="text-primary">{{ stats.total_members or 0 }}</h4>
                                         <small class="text-muted">Total Members</small>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="border rounded p-3 text-center">
                                         <i class="fas fa-user-tie text-success fa-2x mb-2"></i>
-                                        <h4 class="text-success">{{ stats.total_admins }}</h4>
+                                        <h4 class="text-success">{{ stats.total_admins or 0 }}</h4>
                                         <small class="text-muted">Administrators</small>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="border rounded p-3 text-center">
                                         <i class="fas fa-calculator text-info fa-2x mb-2"></i>
-                                        <h4 class="text-info">{{ stats.total_treasurers }}</h4>
+                                        <h4 class="text-info">{{ stats.total_treasurers or 0 }}</h4>
                                         <small class="text-muted">Treasurers</small>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="border rounded p-3 text-center">
                                         <i class="fas fa-pen text-warning fa-2x mb-2"></i>
-                                        <h4 class="text-warning">{{ stats.total_secretaries }}</h4>
+                                        <h4 class="text-warning">{{ stats.total_secretaries or 0 }}</h4>
                                         <small class="text-muted">Secretaries</small>
                                     </div>
                                 </div>
@@ -140,7 +135,6 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- Financial Health -->
                 <div class="col-lg-6">
                     <div class="card">
@@ -151,36 +145,36 @@
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
+                                {% set total_contrib = stats.total_contributions or 0 %}
+                                {% set active_loans = stats.active_loans_amount or 0 %}
+                                {% set loan_ratio = (active_loans / total_contrib * 100) if total_contrib > 0 else 0 %}
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span>Loan to Savings Ratio</span>
                                     <span class="fw-bold">
-                                        {{ "%.1f"|format((stats.active_loans_amount / stats.total_contributions * 100) if stats.total_contributions > 0 else 0) }}%
+                                        {{ "%.1f"|format(loan_ratio) }}%
                                     </span>
                                 </div>
                                 <div class="progress mt-1">
-                                    {% set loan_ratio = (stats.active_loans_amount / stats.total_contributions * 100) if stats.total_contributions > 0 else 0 %}
                                     <div class="progress-bar bg-{{ 'success' if loan_ratio < 70 else 'warning' if loan_ratio < 85 else 'danger' }}" 
                                          style="width: {{ loan_ratio }}%"></div>
                                 </div>
                             </div>
-
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span>Recent Activity</span>
-                                    <span class="fw-bold">{{ stats.recent_contributions }} contributions this month</span>
+                                    <span class="fw-bold">{{ stats.recent_contributions or 0 }} contributions this month</span>
                                 </div>
                             </div>
-
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span>Pending Loans</span>
-                                    <span class="fw-bold text-warning">{{ stats.pending_loans }} applications</span>
+                                    <span class="fw-bold text-warning">{{ stats.pending_loans or 0 }} applications</span>
                                 </div>
                             </div>
-
-                            <div class="alert alert-{{ 'success' if stats.group_balance > 0 else 'warning' }} mb-0">
-                                <i class="fas fa-{{ 'check-circle' if stats.group_balance > 0 else 'exclamation-triangle' }} me-2"></i>
-                                Group is {{ 'in good financial standing' if stats.group_balance > 0 else 'experiencing negative balance' }}
+                            {% set group_balance = stats.group_balance or 0 %}
+                            <div class="alert alert-{{ 'success' if group_balance > 0 else 'warning' }} mb-0">
+                                <i class="fas fa-{{ 'check-circle' if group_balance > 0 else 'exclamation-triangle' }} me-2"></i>
+                                Group is {{ 'in good financial standing' if group_balance > 0 else 'experiencing negative balance' }}
                             </div>
                         </div>
                     </div>
@@ -226,7 +220,7 @@
                 </div>
             </div>
 
-            <!-- Recent Activity -->
+            <!-- Recent Activity / KPIs -->
             <div class="row">
                 <div class="col-12">
                     <div class="card">
@@ -246,16 +240,19 @@
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        {% set total_contrib = stats.total_contributions or 0 %}
+                                        {% set active_loans = stats.active_loans_amount or 0 %}
+                                        {% set group_balance = stats.group_balance or 0 %}
                                         <tr>
                                             <td>Total Group Assets</td>
-                                            <td>{{ format_currency(stats.total_contributions) }}</td>
+                                            <td>{{ format_currency(total_contrib) }}</td>
                                             <td><span class="badge bg-success">Healthy</span></td>
                                         </tr>
                                         <tr>
                                             <td>Outstanding Loans</td>
-                                            <td>{{ format_currency(stats.active_loans_amount) }}</td>
+                                            <td>{{ format_currency(active_loans) }}</td>
                                             <td>
-                                                {% set loan_risk_ratio = (stats.active_loans_amount / stats.total_contributions * 100) if stats.total_contributions > 0 else 0 %}
+                                                {% set loan_risk_ratio = (active_loans / total_contrib * 100) if total_contrib > 0 else 0 %}
                                                 <span class="badge bg-{{ 'success' if loan_risk_ratio < 70 else 'warning' if loan_risk_ratio < 85 else 'danger' }}">
                                                     {{ 'Low Risk' if loan_risk_ratio < 70 else 'Medium Risk' if loan_risk_ratio < 85 else 'High Risk' }}
                                                 </span>
@@ -263,16 +260,16 @@
                                         </tr>
                                         <tr>
                                             <td>Liquidity (Available Funds)</td>
-                                            <td>{{ format_currency(stats.group_balance) }}</td>
+                                            <td>{{ format_currency(group_balance) }}</td>
                                             <td>
-                                                <span class="badge bg-{{ 'success' if stats.group_balance > (stats.total_contributions * 0.2) else 'warning' if stats.group_balance > 0 else 'danger' }}">
-                                                    {{ 'Excellent' if stats.group_balance > (stats.total_contributions * 0.2) else 'Good' if stats.group_balance > 0 else 'Critical' }}
-                                                </span>
+                                                {% set liquidity_status = 'success' if group_balance > (total_contrib * 0.2) else 'warning' if group_balance > 0 else 'danger' %}
+                                                {% set liquidity_label = 'Excellent' if group_balance > (total_contrib * 0.2) else 'Good' if group_balance > 0 else 'Critical' %}
+                                                <span class="badge bg-{{ liquidity_status }}">{{ liquidity_label }}</span>
                                             </td>
                                         </tr>
                                         <tr>
                                             <td>Member Participation</td>
-                                            <td>{{ stats.total_members }} active members</td>
+                                            <td>{{ stats.total_members or 0 }} active members</td>
                                             <td><span class="badge bg-primary">Growing</span></td>
                                         </tr>
                                     </tbody>
@@ -330,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const loanStatusData = {
         labels: ['Active Loans', 'Available Funds'],
         datasets: [{
-            data: [{{ stats.active_loans_amount }}, {{ stats.group_balance }}],
+            data: [{{ stats.active_loans_amount or 0 }}, {{ stats.group_balance or 0 }}],
             backgroundColor: [
                 'rgba(255, 99, 132, 0.8)',
                 'rgba(54, 162, 235, 0.8)'

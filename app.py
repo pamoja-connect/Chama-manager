@@ -43,8 +43,10 @@ login_manager.login_message = 'Please log in to access this page.'
 csrf = CSRFProtect(app)
 
 # Ensure upload directory exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
+try:
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+except FileExistsError:
+    pass
 # Import actual helper functions
 from utils import has_permission, format_currency, format_date, format_datetime
 

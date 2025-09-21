@@ -5,3 +5,4 @@ Flask-WTF
 SQLAlchemy
 Werkzeug
 gunicorn
+reportlab

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{% if selected_group %}Login — {{ selected_group.name }}{% else %}Admin Login — {{ app_name }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center"
+     style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-5 col-lg-4">
+
+        <!-- Back to groups -->
+        <div class="text-center mb-4">
+          <a href="{{ url_for('index') }}" class="text-white text-decoration-none small">
+            <i class="fas fa-arrow-left me-1"></i>Back to all groups
+          </a>
+        </div>
+
+        <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+
+          {% if selected_group %}
+          <!-- GROUP LOGIN HEADER -->
+          <div class="card-header text-white text-center py-4 border-0"
+               style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
+            {% if selected_group.logo %}
+            <img src="{{ url_for('static', filename='uploads/' + selected_group.logo) }}"
+                 style="height:56px;width:56px;border-radius:12px;object-fit:cover;margin-bottom:10px;"
+                 alt="{{ selected_group.name }}" onerror="this.style.display='none'">
+            {% else %}
+            <div class="rounded-3 mx-auto mb-2 d-flex align-items-center justify-content-center"
+                 style="width:56px;height:56px;background:rgba(255,255,255,0.2);">
+              <i class="fas fa-users fa-xl text-white"></i>
+            </div>
+            {% endif %}
+            <h5 class="mb-0 fw-bold">{{ selected_group.name }}</h5>
+            <p class="mb-0 mt-1 small" style="opacity:.8;">
+              <i class="fas fa-map-marker-alt me-1"></i>{{ selected_group.location or 'Kenya' }}
+              {% if selected_group.year_established %}· Est. {{ selected_group.year_established }}{% endif %}
+            </p>
+          </div>
+
+          {% else %}
+          <!-- CONNECT ADMIN HEADER -->
+          <div class="card-header text-white text-center py-4 border-0"
+               style="background:linear-gradient(135deg,#1a1a2e,#16213e);">
+            <div class="rounded-3 mx-auto mb-2 d-flex align-items-center justify-content-center"
+                 style="width:56px;height:56px;background:rgba(255,255,255,0.1);">
+              <i class="fas fa-shield-alt fa-xl text-white"></i>
+            </div>
+            <h5 class="mb-0 fw-bold">{{ app_name }} Admin</h5>
+            <p class="mb-0 mt-1 small" style="opacity:.7;">Platform Administrator Login</p>
+          </div>
+          {% endif %}
+
+          <div class="card-body p-4">
+            <form method="POST" autocomplete="on">
+              {{ form.hidden_tag() }}
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold small">
+                  <i class="fas fa-user me-1 text-primary"></i>
+                  {% if selected_group %}Select Member{% else %}Admin Username{% endif %}
+                </label>
+                {{ form.username(class="form-select") }}
+                {% for error in form.username.errors %}
+                <div class="text-danger small mt-1">{{ error }}</div>
+                {% endfor %}
+              </div>
+
+              <div class="mb-4">
+                <label class="form-label fw-semibold small">
+                  <i class="fas fa-lock me-1 text-primary"></i>Password
+                </label>
+                <div class="input-group">
+                  {{ form.password(class="form-control", id="passwordInput", autocomplete="current-password") }}
+                  <button type="button" class="btn btn-outline-secondary" onclick="togglePassword()">
+                    <i class="fas fa-eye" id="toggleIcon"></i>
+                  </button>
+                </div>
+                {% for error in form.password.errors %}
+                <div class="text-danger small mt-1">{{ error }}</div>
+                {% endfor %}
+              </div>
+
+              {% with msgs = get_flashed_messages(with_categories=true) %}
+                {% for cat, msg in msgs %}
+                  <div class="alert alert-{{ 'danger' if cat == 'error' else cat }} alert-dismissible py-2 small" role="alert">
+                    {{ msg }}
+                    <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>
+                  </div>
+                {% endfor %}
+              {% endwith %}
+
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-lg fw-semibold rounded-3"
+                        style="background:linear-gradient(135deg,#667eea,#764ba2);border:none;">
+                  <i class="fas fa-sign-in-alt me-2"></i>LOGIN
+                </button>
+              </div>
+            </form>
+
+            {% if selected_group %}
+            <hr class="my-3">
+            <div class="d-grid">
+              <a href="{{ url_for('apply_membership') }}?group={{ selected_group.id }}"
+                 class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-user-plus me-1"></i>Apply for Membership
+              </a>
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="card-footer text-center text-muted small py-3 border-0" style="background:rgba(0,0,0,0.04);">
+            <i class="fas fa-shield-alt me-1 text-success"></i>Secure Login &bull; Powered by {{ app_name }}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function togglePassword() {
+  const pw = document.getElementById('passwordInput');
+  const ic = document.getElementById('toggleIcon');
+  pw.type = pw.type === 'password' ? 'text' : 'password';
+  ic.classList.toggle('fa-eye');
+  ic.classList.toggle('fa-eye-slash');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Projects & Activities — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-4">
+
+    {% if action in ['Add', 'Edit'] %}
+    <!-- ─── Add / Edit Project Form ─────────────────────────────────── -->
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="card shadow">
+                <div class="card-header" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-{{ 'plus' if action == 'Add' else 'edit' }} me-2"></i>
+                        {{ action }} Project / Activity
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">{{ form.name.label.text }}</label>
+                            {{ form.name(class="form-control", placeholder="e.g. Water Borehole Project") }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">{{ form.description.label.text }}</label>
+                            {{ form.description(class="form-control", rows=4, placeholder="Describe the project or activity...") }}
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">{{ form.status.label.text }}</label>
+                                {{ form.status(class="form-select") }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">{{ form.budget.label.text }}</label>
+                                {{ form.budget(class="form-control", placeholder="0.00") }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">{{ form.start_date.label.text }}</label>
+                                {{ form.start_date(class="form-control", type="date") }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">{{ form.end_date.label.text }}</label>
+                                {{ form.end_date(class="form-control", type="date") }}
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>{{ 'Add Project' if action == 'Add' else 'Save Changes' }}
+                            </button>
+                            <a href="{{ url_for('projects') }}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- ─── Projects List ────────────────────────────────────────────── -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0"><i class="fas fa-project-diagram me-2 text-primary"></i>Projects & Activities</h4>
+            <small class="text-muted">Group initiatives and ongoing activities</small>
+        </div>
+        {% if current_user.role in ['Admin', 'Chairman', 'Secretary'] or current_user.is_super_admin %}
+        <a href="{{ url_for('add_project') }}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus me-1"></i>Add Project
+        </a>
+        {% endif %}
+    </div>
+
+    {% if projects %}
+    <!-- Status filter pills -->
+    <div class="d-flex gap-2 flex-wrap mb-4">
+        <button class="btn btn-sm btn-primary filter-btn active" data-filter="all">All ({{ projects|length }})</button>
+        <button class="btn btn-sm btn-outline-info filter-btn" data-filter="Active">Active</button>
+        <button class="btn btn-sm btn-outline-secondary filter-btn" data-filter="Planned">Planned</button>
+        <button class="btn btn-sm btn-outline-success filter-btn" data-filter="Completed">Completed</button>
+        <button class="btn btn-sm btn-outline-warning filter-btn" data-filter="On Hold">On Hold</button>
+    </div>
+
+    <div class="row g-4" id="projectsGrid">
+        {% for project in projects %}
+        <div class="col-md-6 col-xl-4 project-card" data-status="{{ project.status }}">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="fw-bold mb-0">{{ project.name }}</h6>
+                        <span class="badge ms-2
+                            {% if project.status == 'Active' %}bg-success
+                            {% elif project.status == 'Completed' %}bg-primary
+                            {% elif project.status == 'Planned' %}bg-info text-dark
+                            {% else %}bg-warning text-dark{% endif %}">
+                            {{ project.status }}
+                        </span>
+                    </div>
+                    <p class="text-muted small mb-3">{{ project.description[:150] }}{% if project.description|length > 150 %}...{% endif %}</p>
+                    <div class="row g-2 small text-muted">
+                        {% if project.budget %}
+                        <div class="col-6"><i class="fas fa-coins me-1 text-warning"></i>Budget: <strong>{{ format_currency(project.budget) }}</strong></div>
+                        {% endif %}
+                        {% if project.start_date %}
+                        <div class="col-6"><i class="fas fa-calendar-alt me-1 text-primary"></i>Start: {{ project.start_date.strftime('%d %b %Y') }}</div>
+                        {% endif %}
+                        {% if project.end_date %}
+                        <div class="col-6"><i class="fas fa-calendar-check me-1 text-success"></i>End: {{ project.end_date.strftime('%d %b %Y') }}</div>
+                        {% endif %}
+                        <div class="col-12 mt-1">
+                            <i class="fas fa-user me-1"></i>By {{ project.creator.full_name }}
+                        </div>
+                    </div>
+                </div>
+                {% if current_user.role in ['Admin', 'Chairman', 'Secretary'] or current_user.is_super_admin %}
+                <div class="card-footer bg-transparent d-flex gap-2">
+                    <a href="{{ url_for('edit_project', project_id=project.id) }}" class="btn btn-outline-primary btn-sm flex-fill">
+                        <i class="fas fa-edit me-1"></i>Edit
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="text-center py-5 text-muted">
+        <i class="fas fa-project-diagram fa-4x mb-3 opacity-25"></i>
+        <h5>No projects yet</h5>
+        <p>Add your group's projects and activities to keep members informed.</p>
+        {% if current_user.role in ['Admin', 'Chairman', 'Secretary'] or current_user.is_super_admin %}
+        <a href="{{ url_for('add_project') }}" class="btn btn-primary mt-2">Add First Project</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+
+{% block extra_scripts %}
+<script>
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(b => { b.className = b.className.replace('btn-primary','btn-outline-primary').replace(' active',''); });
+        this.classList.remove('btn-outline-primary');
+        this.classList.add('btn-primary', 'active');
+        const filter = this.dataset.filter;
+        document.querySelectorAll('.project-card').forEach(card => {
+            card.style.display = (filter === 'all' || card.dataset.status === filter) ? '' : 'none';
+        });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

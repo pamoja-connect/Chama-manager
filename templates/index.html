@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}{{ app_name }} — Empowering Communities{% endblock %}
+
+{% block content %}
+<!-- ── HERO ─────────────────────────────────────────────────────────── -->
+<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;flex-direction:column;">
+
+  <!-- Navbar-like top bar -->
+  <div class="px-4 py-3 d-flex align-items-center justify-content-between" style="background:rgba(0,0,0,0.15);">
+    <div class="d-flex align-items-center gap-2">
+      <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:38px;height:38px;background:rgba(255,255,255,0.2);">
+        <i class="fas fa-network-wired text-white fs-5"></i>
+      </div>
+      <span class="fw-bold text-white fs-5">{{ app_name }}</span>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('apply_membership') }}" class="btn btn-sm btn-outline-light">
+        <i class="fas fa-user-plus me-1"></i>Join a Group
+      </a>
+      <a href="{{ url_for('register_group') }}" class="btn btn-sm btn-light fw-semibold">
+        <i class="fas fa-plus me-1"></i>Register Group
+      </a>
+    </div>
+  </div>
+
+  <!-- Hero text -->
+  <div class="flex-grow-1 d-flex align-items-center justify-content-center text-center px-3 py-5">
+    <div>
+      <div class="mb-4">
+        <div class="rounded-4 mx-auto d-flex align-items-center justify-content-center" style="width:130px;height:130px;background:rgba(255,255,255,0.2);">
+          <i class="fas fa-network-wired fa-4x text-white"></i>
+        </div>
+      </div>
+      <h1 class="display-4 fw-bold text-white mb-3">{{ app_name }}</h1>
+      <p class="lead text-white mb-2" style="opacity:.9;">The universal platform for Self-Help Group management.</p>
+      <p class="text-white mb-5" style="opacity:.75;max-width:520px;margin:0 auto;">Every group works independently — savings, loans, members, projects and more — all in one secure platform.</p>
+
+      <!-- Platform stats pills -->
+      <div class="d-flex justify-content-center gap-4 flex-wrap mb-5">
+        <div class="text-white text-center">
+          <div class="fw-bold fs-3">{{ platform_stats.total_groups }}</div>
+          <div class="small" style="opacity:.8;">Groups</div>
+        </div>
+        <div style="width:1px;background:rgba(255,255,255,0.3);"></div>
+        <div class="text-white text-center">
+          <div class="fw-bold fs-3">{{ platform_stats.total_members }}</div>
+          <div class="small" style="opacity:.8;">Members</div>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <div class="d-flex gap-3 justify-content-center flex-wrap">
+        <a href="#groups" class="btn btn-light btn-lg fw-semibold px-4">
+          <i class="fas fa-search me-2"></i>Find My Group
+        </a>
+        <a href="{{ url_for('register_group') }}" class="btn btn-outline-light btn-lg px-4">
+          <i class="fas fa-plus-circle me-2"></i>Register a Group
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── GROUPS SECTION ─────────────────────────────────────────────── -->
+<section id="groups" class="py-5" style="background:#f8f9fa;">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="fw-bold mb-2">Registered Groups</h2>
+      <p class="text-muted">Select your group below to log in or apply for membership.</p>
+    </div>
+
+    {% if group_cards %}
+    <div class="row g-4 justify-content-center">
+      {% for card in group_cards %}
+      <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden" style="transition:.2s;" onmouseenter="this.style.transform='translateY(-4px)'" onmouseleave="this.style.transform=''">
+          <!-- Card colour bar -->
+          <div style="height:6px;background:linear-gradient(90deg,#667eea,#764ba2);"></div>
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center gap-3 mb-3">
+              {% if card.group.logo %}
+              <img src="{{ url_for('static', filename='uploads/' + card.group.logo) }}"
+                   style="width:52px;height:52px;border-radius:12px;object-fit:cover;" alt="logo">
+              {% else %}
+              <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                   style="width:52px;height:52px;background:linear-gradient(135deg,#667eea,#764ba2);">
+                <i class="fas fa-users text-white fs-5"></i>
+              </div>
+              {% endif %}
+              <div>
+                <h5 class="fw-bold mb-0">{{ card.group.name }}</h5>
+                <small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>{{ card.group.location or 'Kenya' }}</small>
+              </div>
+            </div>
+
+            {% if card.group.description %}
+            <p class="text-muted small mb-3">{{ card.group.description[:120] }}{% if card.group.description|length > 120 %}…{% endif %}</p>
+            {% endif %}
+
+            <div class="d-flex gap-3 mb-4">
+              <div class="text-center">
+                <div class="fw-bold text-primary">{{ card.members }}</div>
+                <div class="text-muted" style="font-size:.75rem;">Members</div>
+              </div>
+              {% if card.group.year_established %}
+              <div class="text-center">
+                <div class="fw-bold text-primary">{{ card.group.year_established }}</div>
+                <div class="text-muted" style="font-size:.75rem;">Est.</div>
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="d-grid gap-2">
+              <a href="{{ url_for('login') }}?group={{ card.group.id }}"
+                 class="btn btn-primary fw-semibold"
+                 style="background:linear-gradient(135deg,#667eea,#764ba2);border:none;">
+                <i class="fas fa-sign-in-alt me-2"></i>Login to {{ card.group.name }}
+              </a>
+              <a href="{{ url_for('apply_membership') }}?group={{ card.group.id }}"
+                 class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-user-plus me-1"></i>Apply for Membership
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="text-center py-5">
+      <div class="mb-3"><i class="fas fa-users fa-3x text-muted"></i></div>
+      <h5 class="text-muted">No groups registered yet.</h5>
+      <p class="text-muted">Be the first to register your SHG on CONNECT.</p>
+      <a href="{{ url_for('register_group') }}" class="btn btn-primary mt-2">
+        <i class="fas fa-plus me-2"></i>Register Your Group
+      </a>
+    </div>
+    {% endif %}
+
+    <!-- Register new group CTA -->
+    <div class="text-center mt-5 pt-3">
+      <div class="card border-0 rounded-4 shadow-sm mx-auto" style="max-width:480px;background:linear-gradient(135deg,#667eea,#764ba2);">
+        <div class="card-body p-4 text-white text-center">
+          <i class="fas fa-plus-circle fa-2x mb-3"></i>
+          <h5 class="fw-bold mb-2">Register Your Group</h5>
+          <p class="mb-3" style="opacity:.85;">Bring your SHG onto CONNECT. Free to register — you get a dedicated dashboard, your own members, and full management tools.</p>
+          <a href="{{ url_for('register_group') }}" class="btn btn-light fw-semibold">
+            <i class="fas fa-rocket me-2"></i>Get Started
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ───────────────────────────────────────────────── -->
+<section class="py-5">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="fw-bold">How CONNECT Works</h2>
+      <p class="text-muted">One platform — many independent groups.</p>
+    </div>
+    <div class="row g-4 text-center">
+      <div class="col-md-4">
+        <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center"
+             style="width:72px;height:72px;background:linear-gradient(135deg,#667eea,#764ba2);">
+          <i class="fas fa-users-cog fa-2x text-white"></i>
+        </div>
+        <h5 class="fw-bold">Register Your Group</h5>
+        <p class="text-muted small">Fill in your group details and create the group admin account. Your group gets its own isolated space.</p>
+      </div>
+      <div class="col-md-4">
+        <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center"
+             style="width:72px;height:72px;background:linear-gradient(135deg,#11998e,#38ef7d);">
+          <i class="fas fa-user-plus fa-2x text-white"></i>
+        </div>
+        <h5 class="fw-bold">Add Your Members</h5>
+        <p class="text-muted small">Members apply to join your group or the admin adds them directly. Each member sees only their group's data.</p>
+      </div>
+      <div class="col-md-4">
+        <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center"
+             style="width:72px;height:72px;background:linear-gradient(135deg,#f093fb,#f5576c);">
+          <i class="fas fa-chart-line fa-2x text-white"></i>
+        </div>
+        <h5 class="fw-bold">Manage Everything</h5>
+        <p class="text-muted small">Savings, loans, fines, announcements, projects — all in one dashboard designed for SHG management.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────── -->
+<footer style="background:#1a1a2e;" class="text-white py-4 text-center">
+  <div class="container">
+    <p class="mb-1 fw-bold">{{ app_name }}</p>
+    <p class="small mb-2" style="opacity:.6;">Empowering Communities through Technology</p>
+    <div class="mt-3">
+      <a href="{{ url_for('login') }}" class="text-white text-decoration-none small me-3" style="opacity:.5;">
+        <i class="fas fa-shield-alt me-1"></i>Platform Admin Login
+      </a>
+    </div>
+    <p class="mt-3 mb-0" style="font-size:.75rem;opacity:.4;">© {{ datetime.now().year }} {{ app_name }}. All rights reserved.</p>
+  </div>
+</footer>
+{% endblock %}

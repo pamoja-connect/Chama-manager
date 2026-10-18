@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Notifications — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">
+                    <i class="fas fa-bell me-2 text-warning"></i>Notifications
+                    {% if notifications %}
+                    <span class="badge bg-secondary ms-2" style="font-size:0.7rem;">{{ notifications|length }}</span>
+                    {% endif %}
+                </h4>
+                <form action="{{ url_for('mark_notifications_read') }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-check-double me-1"></i>Mark All Read
+                    </button>
+                </form>
+            </div>
+
+            {% if notifications %}
+            <div class="list-group shadow-sm">
+                {% for notif in notifications %}
+                <div class="list-group-item list-group-item-action border-0 border-bottom py-3
+                    {{ 'bg-opacity-10' if not notif.is_read }}" style="{{ 'border-left: 4px solid #764ba2 !important;' if not notif.is_read }}">
+                    <div class="d-flex gap-3 align-items-start">
+                        <div class="flex-shrink-0 pt-1">
+                            {% if notif.notification_type in ['payment_recorded', 'payment_confirmed'] %}
+                            <span class="badge rounded-circle bg-success p-2"><i class="fas fa-piggy-bank"></i></span>
+                            {% elif 'loan' in notif.notification_type %}
+                            <span class="badge rounded-circle bg-warning text-dark p-2"><i class="fas fa-hand-holding-usd"></i></span>
+                            {% elif 'membership' in notif.notification_type or 'member' in notif.notification_type %}
+                            <span class="badge rounded-circle bg-primary p-2"><i class="fas fa-user-plus"></i></span>
+                            {% elif notif.notification_type == 'message' %}
+                            <span class="badge rounded-circle bg-info p-2"><i class="fas fa-envelope"></i></span>
+                            {% elif notif.notification_type == 'project' %}
+                            <span class="badge rounded-circle bg-purple p-2"><i class="fas fa-project-diagram"></i></span>
+                            {% else %}
+                            <span class="badge rounded-circle bg-secondary p-2"><i class="fas fa-bell"></i></span>
+                            {% endif %}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <strong class="{{ 'fw-bold' if not notif.is_read }}">{{ notif.title }}</strong>
+                                <small class="text-muted text-nowrap ms-3">{{ notif.created_at.strftime('%d %b %Y %H:%M') }}</small>
+                            </div>
+                            <p class="mb-1 mt-1" style="white-space:pre-wrap;font-size:0.9rem;">{{ notif.message }}</p>
+                            <div class="d-flex gap-2 flex-wrap mt-1">
+                                {% if notif.payment_method %}
+                                <span class="badge bg-info text-dark"><i class="fas fa-credit-card me-1"></i>{{ notif.payment_method.upper() }}</span>
+                                {% endif %}
+                                {% if notif.transaction_reference %}
+                                <span class="badge bg-secondary"><i class="fas fa-hashtag me-1"></i>Ref: {{ notif.transaction_reference }}</span>
+                                {% endif %}
+                                {% if not notif.is_read %}
+                                <span class="badge bg-primary" style="font-size:0.6rem;">NEW</span>
+                                {% endif %}
+                            </div>
+                            {% if notif.link_url and notif.link_url != '#' %}
+                            <a href="{{ notif.link_url }}" class="btn btn-link btn-sm p-0 mt-1" style="font-size:0.8rem;">
+                                View details <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-bell-slash fa-4x mb-3 opacity-25"></i>
+                <h5>No notifications</h5>
+                <p>You're all caught up! Notifications about savings, loans, and group activity will appear here.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

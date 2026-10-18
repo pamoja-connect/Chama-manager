@@ -1,0 +1,742 @@
+/* Custom CSS for Pamoja Agencies SHG */
+
+/* Custom color scheme based on logo */
+:root {
+    --pamoja-primary: #1e40af;    /* Deep blue from logo */
+    --pamoja-secondary: #3b82f6;  /* Medium blue */
+    --pamoja-accent: #10b981;     /* Green accent */
+    --pamoja-light: #f1f5f9;     /* Light gray */
+    --pamoja-dark: #1e293b;      /* Dark blue-gray */
+    --pamoja-orange: #f59e0b;    /* Orange accent from logo */
+
+    /* Gradient color schemes for different sections */
+    --gradient-loans: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-fines: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --gradient-announcements: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --gradient-reports: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    --gradient-members: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    --gradient-contributions: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    --gradient-welfare: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    --gradient-voting: linear-gradient(135deg, #ff9a56 0%, #ff6a95 100%);
+    --gradient-public: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+    /* Financial App Gradients */
+    --members-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --loans-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --contributions-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --announcements-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    --fines-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    --reports-gradient: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    --membership-gradient: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    --hero-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Global styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+/* Hero section styles */
+.hero-section {
+    background: linear-gradient(135deg, var(--pamoja-primary), var(--pamoja-secondary));
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+}
+
+.hero-section .feature-icon {
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+/* Feature icons */
+.feature-icon {
+    transition: all 0.3s ease;
+}
+
+.feature-icon:hover {
+    transform: scale(1.05);
+}
+
+/* Card enhancements */
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Section-specific gradient headers */
+.members-section .card-header,
+.members-section .page-header {
+    background: var(--members-gradient);
+    color: white;
+    border-radius: 10px 10px 0 0;
+}
+
+.loans-section .card-header,
+.loans-section .page-header {
+    background: var(--loans-gradient);
+    color: white;
+    border-radius: 10px 10px 0 0;
+}
+
+.contributions-section .card-header,
+.contributions-section .page-header {
+    background: var(--contributions-gradient);
+    color: white;
+    border-radius: 10px 10px 0 0;
+}
+
+.announcements-section .card-header,
+.announcements-section .page-header {
+    background: var(--announcements-gradient);
+    color: white;
+    border-radius: 10px 10px 0 0;
+}
+
+.fines-section .card-header,
+.fines-section .page-header {
+    background: var(--fines-gradient);
+    color: white;
+    border-radius: 10px 10px 0 0;
+}
+
+.reports-section .card-header,
+.reports-section .page-header {
+    background: var(--reports-gradient);
+    color: white;
+    border-radius: 10px 10px 0 0;
+}
+
+.membership-section .card-header,
+.membership-section .page-header {
+    background: var(--membership-gradient);
+    color: white;
+    border-radius: 10px 10px 0 0;
+}
+
+/* Hero section gradient */
+.hero {
+    background: var(--hero-gradient);
+    color: white;
+    padding: 4rem 0;
+    text-align: center;
+}
+
+/* Navigation enhancement */
+.navbar {
+    background: var(--hero-gradient) !important;
+}
+
+/* Dashboard card icons with matching gradients */
+.dashboard-icon.members { background: var(--members-gradient); }
+.dashboard-icon.loans { background: var(--loans-gradient); }
+.dashboard-icon.contributions { background: var(--contributions-gradient); }
+.dashboard-icon.announcements { background: var(--announcements-gradient); }
+.dashboard-icon.fines { background: var(--fines-gradient); }
+.dashboard-icon.reports { background: var(--reports-gradient); }
+.dashboard-icon.membership { background: var(--membership-gradient); }
+
+.dashboard-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    color: white;
+    font-size: 1.5rem;
+}
+
+/* Dashboard stats cards */
+.card.bg-primary,
+.card.bg-success,
+.card.bg-warning,
+.card.bg-info,
+.card.bg-danger,
+.card.bg-secondary {
+    background: linear-gradient(45deg, var(--bs-card-bg), rgba(255, 255, 255, 0.1)) !important;
+}
+
+/* Logo and Navigation enhancements */
+.navbar-brand {
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.navbar-brand:hover {
+    transform: scale(1.05);
+}
+
+.navbar-brand .logo {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    margin-right: 8px;
+}
+
+/* Logo styling */
+.logo {
+    height: 40px;
+    width: auto;
+    margin-right: 10px;
+    border-radius: 4px;
+}
+
+/* Logo on login/index page */
+.logo-large {
+    height: 120px;
+    width: auto;
+    margin-bottom: 20px;
+}
+
+.navbar-dark {
+    background-color: var(--pamoja-primary) !important;
+}
+
+.navbar-dark .navbar-brand,
+.navbar-dark .navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.navbar-dark .navbar-nav .nav-link:hover {
+    color: var(--pamoja-accent) !important;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-link {
+    transition: all 0.3s ease;
+    border-radius: 0.375rem;
+    margin: 0 0.25rem;
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Table enhancements */
+.table {
+    background-color: var(--bs-body-bg);
+}
+
+.table th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--bs-border-color);
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--bs-secondary-bg);
+}
+
+/* Form enhancements */
+.form-control,
+.form-select {
+    transition: all 0.3s ease;
+    border-radius: 0.5rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+    transform: scale(1.02);
+}
+
+/* Button enhancements */
+.btn {
+    transition: all 0.3s ease;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.btn-group .btn {
+    transform: none;
+}
+
+.btn-group .btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Badge enhancements */
+.badge {
+    font-weight: 500;
+    padding: 0.5em 0.75em;
+    border-radius: 0.375rem;
+}
+
+/* Alert enhancements */
+.alert {
+    border-radius: 0.75rem;
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+/* Progress bars */
+.progress {
+    border-radius: 0.5rem;
+    height: 0.75rem;
+}
+
+.progress-bar {
+    transition: width 1s ease-in-out;
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2rem;
+    height: 2rem;
+    margin: -1rem 0 0 -1rem;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--pamoja-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bs-secondary-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--pamoja-primary);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--pamoja-secondary);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .hero-section {
+        min-height: 60vh;
+        text-align: center;
+    }
+
+    .hero-section .feature-icon {
+        width: 120px !important;
+        height: 120px !important;
+    }
+
+    .hero-section .feature-icon i {
+        font-size: 3rem !important;
+    }
+
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+
+    .btn-group {
+        flex-direction: column;
+    }
+
+    .btn-group .btn {
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Print styles */
+@media print {
+    .navbar,
+    .btn,
+    .card-footer,
+    .pagination {
+        display: none !important;
+    }
+
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #000 !important;
+    }
+
+    .container {
+        max-width: none !important;
+    }
+}
+
+/* Accessibility improvements */
+.btn:focus,
+.form-control:focus,
+.form-select:focus {
+    outline: 2px solid var(--pamoja-primary);
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .card {
+        border: 2px solid var(--bs-border-color) !important;
+    }
+
+    .btn {
+        border-width: 2px !important;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Chart container styles */
+.chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+}
+
+/* File upload styles */
+.file-upload-area {
+    border: 2px dashed var(--bs-border-color);
+    border-radius: 0.75rem;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.file-upload-area:hover {
+    border-color: var(--pamoja-primary);
+    background-color: var(--bs-primary-bg-subtle);
+}
+
+.file-upload-area.dragover {
+    border-color: var(--pamoja-success);
+    background-color: var(--bs-success-bg-subtle);
+}
+
+/* Status indicators */
+.status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.status-indicator.active {
+    background-color: var(--pamoja-success);
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.pending {
+    background-color: var(--pamoja-orange);
+}
+
+.status-indicator.inactive {
+    background-color: var(--pamoja-danger);
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Currency formatting */
+.currency {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+/* Member avatar styles */
+.member-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: white;
+    font-size: 0.875rem;
+}
+
+/* Announcement styles */
+.announcement-urgent {
+    animation: urgentPulse 2s infinite;
+}
+
+@keyframes urgentPulse {
+    0%, 100% { 
+        border-color: var(--pamoja-warning);
+        box-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+    }
+    50% { 
+        border-color: var(--pamoja-danger);
+        box-shadow: 0 0 20px rgba(220, 53, 69, 0.5);
+    }
+}
+
+/* Section-specific gradient styles */
+.section-loans .card-header,
+.loans-section .hero-section {
+    background: var(--gradient-loans) !important;
+}
+
+.section-fines .card-header,
+.fines-section .hero-section {
+    background: var(--gradient-fines) !important;
+}
+
+.section-announcements .card-header,
+.announcements-section .hero-section {
+    background: var(--gradient-announcements) !important;
+}
+
+.section-reports .card-header,
+.reports-section .hero-section {
+    background: var(--gradient-reports) !important;
+}
+
+.section-members .card-header,
+.members-section .hero-section {
+    background: var(--gradient-members) !important;
+}
+
+.section-contributions .card-header,
+.contributions-section .hero-section {
+    background: var(--gradient-contributions) !important;
+}
+
+.section-welfare .card-header,
+.welfare-section .hero-section {
+    background: var(--gradient-welfare) !important;
+}
+
+.section-voting .card-header,
+.voting-section .hero-section {
+    background: var(--gradient-voting) !important;
+}
+
+.section-public .hero-section {
+    background: var(--gradient-public) !important;
+}
+
+/* Enhanced gradients for dashboard cards */
+.dashboard-card-loans {
+    background: var(--gradient-loans) !important;
+}
+
+.dashboard-card-fines {
+    background: var(--gradient-fines) !important;
+}
+
+.dashboard-card-announcements {
+    background: var(--gradient-announcements) !important;
+}
+
+.dashboard-card-reports {
+    background: var(--gradient-reports) !important;
+}
+
+.dashboard-card-members {
+    background: var(--gradient-members) !important;
+}
+
+.dashboard-card-contributions {
+    background: var(--gradient-contributions) !important;
+}
+
+/* Debt reminder styles */
+.debt-reminder {
+    animation: debtPulse 3s infinite;
+    border: 2px solid #dc3545;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+}
+
+@keyframes debtPulse {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(220, 53, 69, 0.8);
+    }
+}
+
+.debt-amount {
+    font-size: 1.2em;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Debt reminder enhancements */
+.debt-reminder {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 1rem;
+    margin: 1rem 0;
+    box-shadow: 0 4px 15px rgba(238, 90, 36, 0.3);
+}
+
+.persistent-reminder {
+    position: relative;
+    animation: debtPulse 3s infinite;
+}
+
+@keyframes debtPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 4px 15px rgba(238, 90, 36, 0.3); }
+    50% { transform: scale(1.02); box-shadow: 0 6px 20px rgba(238, 90, 36, 0.5); }
+}
+
+/* Badge and gamification styles */
+.badge-earned {
+    background: linear-gradient(45deg, #ffd700, #ffed4e);
+    color: #333;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
+}
+
+/* Badge animations */
+.badge-earned {
+    animation: bounceIn 0.5s ease-out;
+}
+
+@keyframes bounceIn {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.points-display {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.level-bronze { color: #cd7f32; }
+.level-silver { color: #c0c0c0; }
+.level-gold { color: #ffd700; }
+.level-platinum { color: #e5e4e2; }
+
+/* Achievement notification */
+.achievement-notification {
+    z-index: 9999;
+    animation: slideInRight 0.5s ease-out;
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+@keyframes slideInRight {
+    0% { transform: translateX(100%); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+}
+
+/* Modal enhancements */
+.modal-content {
+    border: none;
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+    border-radius: 0.75rem;
+}
+
+.modal-header {
+    border-top-left-radius: 0.75rem;
+    border-top-right-radius: 0.75rem;
+}
+
+/* QR Code styles */
+.qr-code-container {
+    text-align: center;
+    padding: 20px;
+    border: 2px dashed #007bff;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+/* Voting styles */
+.voting-card {
+    border-left: 4px solid var(--pamoja-primary);
+    transition: all 0.3s ease;
+}
+
+.voting-card:hover {
+    border-left-color: var(--pamoja-accent);
+    transform: translateX(5px);
+}
+
+.vote-yes { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+.vote-no { background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%); }
+.vote-abstain { background: linear-gradient(135deg, #6c757d 0%, #adb5bd 100%); }
+
+/* Footer styles */
+footer {
+    margin-top: auto;
+}
+
+/* Utility classes */
+.text-pamoja-primary { color: var(--pamoja-primary) !important; }
+.text-pamoja-secondary { color: var(--pamoja-secondary) !important; }
+.text-pamoja-success { color: var(--pamoja-success) !important; }
+.text-pamoja-warning { color: var(--pamoja-warning) !important; }
+.text-pamoja-danger { color: var(--pamoja-danger) !important; }
+.text-pamoja-info { color: var(--pamoja-info) !important; }
+.text-pamoja-accent { color: var(--pamoja-accent) !important; }
+.text-pamoja-muted { color: var(--pamoja-muted) !important; }
+
+.bg-pamoja-primary { background-color: var(--pamoja-primary) !important; }
+.bg-pamoja-secondary { background-color: var(--pamoja-secondary) !important; }
+.bg-pamoja-success { background-color: var(--pamoja-success) !important; }
+.bg-pamoja-warning { background-color: var(--pamoja-warning) !important; }
+.bg-pamoja-danger { background-color: var(--pamoja-danger) !important; }
+.bg-pamoja-info { background-color: var(--pamoja-info) !important; }
+.bg-pamoja-accent { background-color: var(--pamoja-accent) !important; }
+.bg-pamoja-light { background-color: var(--pamoja-light) !important; }
+
+.border-pamoja-primary { border-color: var(--pamoja-primary) !important; }
+.border-pamoja-secondary { border-color: var(--pamoja-secondary) !important; }
+.border-pamoja-success { border-color: var(--pamoja-success) !important; }
+.border-pamoja-warning { border-color: var(--pamoja-warning) !important; }
+.border-pamoja-danger { border-color: var(--pamoja-danger) !important; }
+.border-pamoja-info { border-color: var(--pamoja-info) !important; }
+.border-pamoja-accent { border-color: var(--pamoja-accent) !important; }

@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name }} — Group Management{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+
+    <!-- PWA Manifest & Favicons -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16x16.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+
+    <!-- iOS PWA meta tags -->
+    <meta name="theme-color" content="#764ba2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CONNECT">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="CONNECT">
+    <meta name="msapplication-TileColor" content="#764ba2">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='icons/icon-144x144.png') }}">
+    {% if current_user.is_authenticated %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+
+    <!-- iOS splash screens (portrait) -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
+    <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
+    <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
+
+    <style>
+        :root { --pamoja-primary: #764ba2; }
+        .navbar-brand-text { font-size: 1.1rem; font-weight: 700; }
+        .notification-badge { position: relative; }
+        .notification-badge .badge { position: absolute; top: -6px; right: -8px; font-size: 0.65rem; min-width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border-radius: 50%; padding: 0 3px; }
+        .notif-dropdown { width: 360px; max-height: 480px; overflow-y: auto; }
+        .notif-item { border-left: 3px solid #764ba2; }
+        .notif-item.unread { background: rgba(118,75,162,0.08); }
+        .nav-pills-custom .nav-link { border-radius: 0.375rem; }
+        .navbar-nav .nav-link.nav-active { color: #fff !important; font-weight: 700; border-bottom: 2px solid rgba(255,255,255,0.85); padding-bottom: 2px; }
+        .offcanvas-nav-link { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; text-decoration: none; border-bottom: 1px solid var(--bs-border-color); color: inherit; transition: background 0.15s; }
+        .offcanvas-nav-link:hover { background: rgba(118,75,162,0.08); color: inherit; }
+        .offcanvas-nav-link.nav-active { background: rgba(118,75,162,0.18); font-weight: 700; border-left: 3px solid #764ba2; padding-left: calc(1.5rem - 3px); color: #764ba2; }
+        [data-bs-theme="dark"] .offcanvas-nav-link.nav-active { color: #c4a0e8; background: rgba(118,75,162,0.25); }
+        .group-switcher-select { max-width: 160px; font-size: 0.78rem; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #fff; border-radius: 6px; padding: 3px 6px; cursor: pointer; }
+        .group-switcher-select option { background: #333; color: #fff; }
+        .group-switcher-select:focus { outline: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.4); }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    {% if current_user.is_authenticated %}
+    {% set ep = request.endpoint %}
+    <nav class="navbar navbar-expand-lg navbar-dark shadow" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="container-fluid px-3">
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="{{ url_for('index') }}">
+                {% if current_group and current_group.logo %}
+                <img src="{{ url_for('static', filename='uploads/' + current_group.logo) }}" alt="Logo" style="height:36px;width:36px;border-radius:6px;object-fit:cover;">
+                {% else %}
+                <img src="{{ url_for('static', filename='uploads/pamoja_logo.png') }}" alt="CONNECT" style="height:36px;width:36px;border-radius:6px;object-fit:cover;" onerror="this.style.display='none'">
+                {% endif %}
+                <span class="navbar-brand-text d-none d-sm-inline">
+                    {% if current_user.is_super_admin %}
+                        {{ app_name }}
+                    {% elif current_group %}
+                        {{ current_group.name }}
+                    {% else %}
+                        {{ app_name }}
+                    {% endif %}
+                </span>
+            </a>
+
+            <!-- Mobile hamburger → offcanvas sidebar -->
+            <button class="navbar-toggler border-0 d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#navOffcanvas" aria-controls="navOffcanvas">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!-- Desktop inline nav (hidden on mobile) -->
+            <div class="d-none d-lg-flex align-items-center w-100" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link{% if ep in ['dashboard','index'] %} nav-active{% endif %}" href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+                    </li>
+
+                    {% if current_user.role in ['Admin', 'Treasurer', 'Secretary', 'Chairman'] or current_user.is_super_admin %}
+                    <li class="nav-item">
+                        <a class="nav-link{% if ep in ['members','add_member','edit_member','deactivate_member','member_directory','add_member_to_group'] %} nav-active{% endif %}" href="{{ url_for('members') }}"><i class="fas fa-users me-1"></i>Members</a>
+                    </li>
+                    {% endif %}
+
+                    <li class="nav-item">
+                        <a class="nav-link{% if ep in ['contributions','add_contribution','delete_contribution'] %} nav-active{% endif %}" href="{{ url_for('contributions') }}"><i class="fas fa-piggy-bank me-1"></i>Savings</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if ep in ['loans','apply_loan','approve_loan','delete_loan','loan_repayment'] %} nav-active{% endif %}" href="{{ url_for('loans') }}"><i class="fas fa-hand-holding-usd me-1"></i>Loans</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if ep in ['fines','delete_fine','pay_fine'] %} nav-active{% endif %}" href="{{ url_for('fines') }}"><i class="fas fa-gavel me-1"></i>Fines</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if ep in ['projects','add_project','edit_project'] %} nav-active{% endif %}" href="{{ url_for('projects') }}"><i class="fas fa-project-diagram me-1"></i>Projects</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if ep in ['announcements','add_announcement','edit_announcement','view_announcement','delete_announcement','meetings','add_meeting','edit_meeting','view_meeting','delete_meeting'] %} nav-active{% endif %}" href="{{ url_for('announcements') }}"><i class="fas fa-bullhorn me-1"></i>Notices</a>
+                    </li>
+
+                    {% if current_user.role in ['Admin', 'Treasurer'] or current_user.is_super_admin %}
+                    <li class="nav-item">
+                        <a class="nav-link{% if ep in ['reports','export_report'] %} nav-active{% endif %}" href="{{ url_for('reports') }}"><i class="fas fa-chart-bar me-1"></i>Reports</a>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.role in ['Admin', 'Chairman'] or current_user.is_super_admin %}
+                    <li class="nav-item">
+                        <a class="nav-link{% if ep in ['membership_applications','review_membership_application','delete_membership_application','apply_membership'] %} nav-active{% endif %}" href="{{ url_for('membership_applications') }}"><i class="fas fa-user-plus me-1"></i>Applications</a>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.is_super_admin or current_user.role == 'Admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link{% if ep in ['groups','register_group','edit_group','toggle_group'] %} nav-active{% endif %}" href="{{ url_for('groups') }}"><i class="fas fa-layer-group me-1"></i>Groups</a>
+                    </li>
+                    {% endif %}
+
+                    <li class="nav-item">
+                        <a class="nav-link{% if ep in ['voting','create_proposal','cast_vote'] %} nav-active{% endif %}" href="{{ url_for('voting') }}"><i class="fas fa-vote-yea me-1"></i>Voting</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if ep in ['welfare','welfare_contribute','welfare_expense'] %} nav-active{% endif %}" href="{{ url_for('welfare') }}"><i class="fas fa-heart me-1"></i>Welfare</a>
+                    </li>
+                </ul>
+
+                <ul class="navbar-nav align-items-center gap-1">
+                    <!-- Group switcher (super admin only) -->
+                    {% if current_user.is_super_admin %}
+                    <li class="nav-item me-1">
+                        <form method="POST" action="{{ url_for('switch_group') }}" id="groupSwitcherForm">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <select name="group_id" class="group-switcher-select" title="Switch group context" onchange="document.getElementById('groupSwitcherForm').submit()">
+                                <option value="">All Groups</option>
+                                {% for g in all_groups %}
+                                <option value="{{ g.id }}" {% if active_group_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                    </li>
+                    {% endif %}
+
+                    <!-- Messages icon -->
+                    <li class="nav-item notification-badge">
+                        <a href="{{ url_for('messages') }}" class="btn btn-outline-light btn-sm position-relative{% if ep in ['messages','compose_message','view_message','delete_message'] %} active{% endif %}" title="Messages">
+                            <i class="fas fa-envelope"></i>
+                            {% if unread_messages > 0 %}
+                            <span class="badge bg-danger rounded-pill" style="position:absolute;top:-6px;right:-8px;font-size:0.6rem;">{{ unread_messages if unread_messages < 99 else '99+' }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+
+                    <!-- Notification Bell -->
+                    <li class="nav-item dropdown notification-badge">
+                        <a class="btn btn-outline-light btn-sm position-relative" href="#" role="button" data-bs-toggle="dropdown" id="notifBell" title="Notifications">
+                            <i class="fas fa-bell"></i>
+                            {% if unread_notifications > 0 %}
+                            <span id="notifCount" class="badge bg-warning text-dark rounded-pill" style="position:absolute;top:-6px;right:-8px;font-size:0.6rem;">{{ unread_notifications if unread_notifications < 99 else '99+' }}</span>
+                            {% else %}
+                            <span id="notifCount" class="badge bg-warning text-dark rounded-pill d-none" style="position:absolute;top:-6px;right:-8px;font-size:0.6rem;">0</span>
+                            {% endif %}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end notif-dropdown p-0" id="notifDropdown">
+                            <li class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+                                <strong><i class="fas fa-bell me-1 text-warning"></i> Notifications</strong>
+                                <a href="{{ url_for('notifications') }}" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.75rem;">View All</a>
+                            </li>
+                            <div id="notifList">
+                                <li class="text-center py-3 text-muted small" id="notifEmpty">
+                                    <i class="fas fa-check-circle me-1 text-success"></i>All caught up!
+                                </li>
+                            </div>
+                            <li class="border-top">
+                                <button class="btn btn-sm w-100 text-muted py-2" onclick="markAllNotificationsRead()" style="font-size:0.8rem;">
+                                    <i class="fas fa-check-double me-1"></i>Mark all as read
+                                </button>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- Install PWA -->
+                    <li class="nav-item">
+                        <button id="installBtn" class="btn btn-outline-light btn-sm" onclick="installPWA()" style="display:none;" title="Install App">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </li>
+
+                    <!-- User menu -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" role="button" data-bs-toggle="dropdown">
+                            {% if current_user.profile_picture %}
+                            <img src="{{ url_for('static', filename='uploads/' + current_user.profile_picture) }}" alt="Profile" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">
+                            {% else %}
+                            <i class="fas fa-user-circle fa-lg"></i>
+                            {% endif %}
+                            <span class="d-none d-lg-inline">{{ current_user.full_name.split()[0] }}</span>
+                            {% if current_user.is_super_admin %}
+                            <span class="badge bg-danger ms-1" style="font-size:0.6rem;">SUPER</span>
+                            {% else %}
+                            <span class="badge bg-secondary ms-1" style="font-size:0.6rem;">{{ current_user.role }}</span>
+                            {% endif %}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li class="px-3 py-2 text-muted small border-bottom">
+                                <i class="fas fa-user me-1"></i> {{ current_user.full_name }}
+                                {% if current_group %}<br><i class="fas fa-layer-group me-1"></i> {{ current_group.name }}{% endif %}
+                            </li>
+                            <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="fas fa-user-cog me-2"></i>My Profile</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('messages') }}"><i class="fas fa-envelope me-2"></i>Messages{% if unread_messages > 0 %} <span class="badge bg-danger ms-1">{{ unread_messages }}</span>{% endif %}</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('receipts') }}"><i class="fas fa-receipt me-2"></i>Receipts</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('gamification') }}"><i class="fas fa-trophy me-2"></i>Badges & Points</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="shareApp()"><i class="fas fa-share-alt me-2"></i>Share App</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ── Mobile Offcanvas Sidebar ────────────────────────────────────────── -->
+    <div class="offcanvas offcanvas-start d-lg-none" tabindex="-1" id="navOffcanvas" data-bs-scroll="true" style="max-width:280px;">
+        <div class="offcanvas-header text-white py-3" style="background:linear-gradient(135deg,#667eea,#764ba2);">
+            <div class="d-flex align-items-center gap-2">
+                {% if current_group and current_group.logo %}
+                <img src="{{ url_for('static', filename='uploads/' + current_group.logo) }}" alt="Logo" style="height:32px;width:32px;border-radius:6px;object-fit:cover;">
+                {% else %}
+                <i class="fas fa-network-wired fa-lg"></i>
+                {% endif %}
+                <span class="fw-bold">
+                    {% if current_user.is_super_admin %}{{ app_name }}{% elif current_group %}{{ current_group.name }}{% else %}{{ app_name }}{% endif %}
+                </span>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body p-0">
+            <div class="px-3 py-2 border-bottom small text-muted">
+                <i class="fas fa-user me-1"></i> {{ current_user.full_name }}
+                {% if current_user.is_super_admin %}<span class="badge bg-danger ms-1">SUPER</span>
+                {% else %}<span class="badge bg-secondary ms-1">{{ current_user.role }}</span>{% endif %}
+                {% if current_group %}<br><i class="fas fa-layer-group me-1"></i> {{ current_group.name }}{% endif %}
+            </div>
+
+            {% if current_user.is_super_admin %}
+            <div class="px-3 py-2 border-bottom">
+                <form method="POST" action="{{ url_for('switch_group') }}" id="groupSwitcherMobile">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label class="form-label small text-muted mb-1"><i class="fas fa-exchange-alt me-1"></i>Switch Group</label>
+                    <select name="group_id" class="form-select form-select-sm" onchange="document.getElementById('groupSwitcherMobile').submit()">
+                        <option value="">All Groups</option>
+                        {% for g in all_groups %}
+                        <option value="{{ g.id }}" {% if active_group_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+            {% endif %}
+
+            <ul class="list-unstyled mb-0">
+                <li><a class="offcanvas-nav-link{% if ep in ['dashboard','index'] %} nav-active{% endif %}" href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt fa-fw"></i>Dashboard</a></li>
+
+                {% if current_user.role in ['Admin','Treasurer','Secretary','Chairman'] or current_user.is_super_admin %}
+                <li><a class="offcanvas-nav-link{% if ep in ['members','add_member','edit_member','deactivate_member','member_directory','add_member_to_group'] %} nav-active{% endif %}" href="{{ url_for('members') }}"><i class="fas fa-users fa-fw"></i>Members</a></li>
+                {% endif %}
+
+                <li><a class="offcanvas-nav-link{% if ep in ['contributions','add_contribution','delete_contribution'] %} nav-active{% endif %}" href="{{ url_for('contributions') }}"><i class="fas fa-piggy-bank fa-fw"></i>Savings</a></li>
+                <li><a class="offcanvas-nav-link{% if ep in ['loans','apply_loan','approve_loan','delete_loan','loan_repayment'] %} nav-active{% endif %}" href="{{ url_for('loans') }}"><i class="fas fa-hand-holding-usd fa-fw"></i>Loans</a></li>
+                <li><a class="offcanvas-nav-link{% if ep in ['fines','delete_fine','pay_fine'] %} nav-active{% endif %}" href="{{ url_for('fines') }}"><i class="fas fa-gavel fa-fw"></i>Fines</a></li>
+                <li><a class="offcanvas-nav-link{% if ep in ['projects','add_project','edit_project'] %} nav-active{% endif %}" href="{{ url_for('projects') }}"><i class="fas fa-project-diagram fa-fw"></i>Projects</a></li>
+                <li><a class="offcanvas-nav-link{% if ep in ['announcements','add_announcement','edit_announcement','view_announcement','delete_announcement','meetings','add_meeting','edit_meeting','view_meeting','delete_meeting'] %} nav-active{% endif %}" href="{{ url_for('announcements') }}"><i class="fas fa-bullhorn fa-fw"></i>Notices</a></li>
+                <li><a class="offcanvas-nav-link{% if ep in ['voting','create_proposal','cast_vote'] %} nav-active{% endif %}" href="{{ url_for('voting') }}"><i class="fas fa-vote-yea fa-fw"></i>Voting</a></li>
+                <li><a class="offcanvas-nav-link{% if ep in ['welfare','welfare_contribute','welfare_expense'] %} nav-active{% endif %}" href="{{ url_for('welfare') }}"><i class="fas fa-heart fa-fw"></i>Welfare</a></li>
+
+                {% if current_user.role in ['Admin','Treasurer'] or current_user.is_super_admin %}
+                <li><a class="offcanvas-nav-link{% if ep in ['reports','export_report'] %} nav-active{% endif %}" href="{{ url_for('reports') }}"><i class="fas fa-chart-bar fa-fw"></i>Reports</a></li>
+                {% endif %}
+
+                {% if current_user.role in ['Admin','Chairman'] or current_user.is_super_admin %}
+                <li><a class="offcanvas-nav-link{% if ep in ['membership_applications','review_membership_application','delete_membership_application','apply_membership'] %} nav-active{% endif %}" href="{{ url_for('membership_applications') }}"><i class="fas fa-user-plus fa-fw"></i>Applications</a></li>
+                {% endif %}
+
+                {% if current_user.is_super_admin or current_user.role == 'Admin' %}
+                <li><a class="offcanvas-nav-link{% if ep in ['groups','register_group','edit_group','toggle_group'] %} nav-active{% endif %}" href="{{ url_for('groups') }}"><i class="fas fa-layer-group fa-fw"></i>Groups</a></li>
+                {% endif %}
+
+                <li><a class="offcanvas-nav-link{% if ep in ['messages','compose_message','view_message','delete_message'] %} nav-active{% endif %}" href="{{ url_for('messages') }}">
+                    <i class="fas fa-envelope fa-fw"></i>Messages
+                    {% if unread_messages > 0 %}<span class="badge bg-danger ms-auto">{{ unread_messages }}</span>{% endif %}
+                </a></li>
+                <li><a class="offcanvas-nav-link{% if ep in ['profile','edit_profile','change_password'] %} nav-active{% endif %}" href="{{ url_for('profile') }}"><i class="fas fa-user-cog fa-fw"></i>My Profile</a></li>
+                <li><a class="offcanvas-nav-link{% if ep in ['receipts','download_receipt'] %} nav-active{% endif %}" href="{{ url_for('receipts') }}"><i class="fas fa-receipt fa-fw"></i>Receipts</a></li>
+                <li><a class="offcanvas-nav-link text-danger" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt fa-fw"></i>Logout</a></li>
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Flash Messages -->
+    <div class="container-fluid px-3 mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert" style="max-width:900px;">
+                    <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else ('check-circle' if category == 'success' else 'info-circle') }} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <main>
+        {% if current_user.is_authenticated and request.endpoint not in ['dashboard', 'index'] %}
+        <div class="container-fluid px-3 mt-2">
+            <button onclick="window.history.back()" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-2"></i>Back
+            </button>
+        </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="mt-5 py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="fw-bold"><i class="fas fa-network-wired me-2"></i>{{ app_name }}</h5>
+                    {% if current_group %}
+                    <p class="mb-0">{{ current_group.name }}</p>
+                    <small style="opacity:0.75;">{{ current_group.location or '' }}</small>
+                    {% else %}
+                    <p class="mb-0">Universal Group Management Platform</p>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                    {% if current_group and current_group.contact_email %}
+                    <p class="mb-1"><i class="fas fa-envelope me-2"></i><a href="mailto:{{ current_group.contact_email }}" class="text-light text-decoration-none">{{ current_group.contact_email }}</a></p>
+                    {% endif %}
+                    <small style="opacity:0.75;">© {{ datetime.now().year }} {{ app_name }}. Empowering Communities.</small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+    // Keep the essential menus usable when a browser blocks the CDN script.
+    // Bootstrap remains the primary implementation when it is available.
+    if (typeof bootstrap === 'undefined') {
+        document.addEventListener('click', function(event) {
+            const toggler = event.target.closest('[data-bs-toggle="offcanvas"]');
+            if (toggler) {
+                const target = document.querySelector(toggler.getAttribute('data-bs-target'));
+                if (target) {
+                    target.classList.add('show');
+                    target.style.visibility = 'visible';
+                    target.setAttribute('aria-modal', 'true');
+                    target.removeAttribute('aria-hidden');
+                    document.body.classList.add('offcanvas-open');
+                    const backdrop = document.createElement('div');
+                    backdrop.className = 'offcanvas-backdrop fade show';
+                    backdrop.dataset.fallbackBackdrop = 'true';
+                    backdrop.addEventListener('click', () => closeFallbackOffcanvas(target));
+                    document.body.appendChild(backdrop);
+                }
+                return;
+            }
+
+            const dismiss = event.target.closest('[data-bs-dismiss="offcanvas"]');
+            if (dismiss) {
+                const target = dismiss.closest('.offcanvas');
+                if (target) closeFallbackOffcanvas(target);
+            }
+        });
+
+        function closeFallbackOffcanvas(target) {
+            target.classList.remove('show');
+            target.style.visibility = '';
+            target.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('offcanvas-open');
+            document.querySelectorAll('[data-fallback-backdrop="true"]').forEach(el => el.remove());
+        }
+    }
+    </script>
+
+    {% if current_user.is_authenticated %}
+    <script>
+    // ─── Notifications ──────────────────────────────────────────────────────────
+    function fetchNotifications() {
+        fetch('/api/notifications')
+            .then(r => r.json())
+            .then(data => {
+                const count = data.count || 0;
+                const badge = document.getElementById('notifCount');
+                const list = document.getElementById('notifList');
+                const empty = document.getElementById('notifEmpty');
+                if (badge) {
+                    badge.textContent = count > 99 ? '99+' : count;
+                    badge.classList.toggle('d-none', count === 0);
+                }
+                if (list && data.notifications) {
+                    if (data.notifications.length === 0) {
+                        if (empty) empty.style.display = '';
+                    } else {
+                        if (empty) empty.style.display = 'none';
+                        const items = data.notifications.map(n => `
+                            <li class="notif-item unread p-3 border-bottom">
+                                <a href="${n.link_url || '#'}" class="text-decoration-none text-reset d-block">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong class="d-block" style="font-size:0.85rem;">${n.title}</strong>
+                                        <span class="text-muted" style="font-size:0.78rem;white-space:pre-line;">${n.message}</span>
+                                        ${n.payment_method ? `<span class="badge bg-info mt-1">${n.payment_method.toUpperCase()}</span>` : ''}
+                                        ${n.transaction_reference ? `<span class="badge bg-secondary mt-1">Ref: ${n.transaction_reference}</span>` : ''}
+                                    </div>
+                                    <small class="text-muted ms-2 text-nowrap">${n.created_at}</small>
+                                </div>
+                                </a>
+                            </li>
+                        `).join('');
+                        list.innerHTML = items;
+                    }
+                }
+            }).catch(() => {});
+    }
+
+    function markAllNotificationsRead() {
+        fetch('/api/notifications/mark-read', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrf_token')},
+            body: JSON.stringify({ids: []})
+        }).then(() => fetchNotifications()).catch(() => {});
+    }
+
+    function getCookie(name) {
+        const val = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+        if (val) return val.pop();
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    // Load notifications on page load + poll every 30s
+    fetchNotifications();
+    setInterval(fetchNotifications, 30000);
+
+    // ─── PWA ────────────────────────────────────────────────────────────────────
+    let deferredPrompt;
+
+    // Detect iOS (Safari doesn't fire beforeinstallprompt)
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches
+                             || window.navigator.standalone === true;
+
+    // Android / Chrome / Edge — standard install prompt
+    window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();
+        deferredPrompt = e;
+        const btn = document.getElementById('installBtn');
+        if (btn) btn.style.display = '';
+    });
+
+    // Hide install button once app is installed
+    window.addEventListener('appinstalled', () => {
+        deferredPrompt = null;
+        const btn = document.getElementById('installBtn');
+        if (btn) btn.style.display = 'none';
+        showPWAToast('✅ CONNECT installed successfully!', 'success');
+    });
+
+    function installPWA() {
+        if (deferredPrompt) {
+            // Android / Chrome path
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(choice => {
+                if (choice.outcome === 'accepted') showPWAToast('Installing CONNECT…', 'info');
+                deferredPrompt = null;
+                const btn = document.getElementById('installBtn');
+                if (btn) btn.style.display = 'none';
+            });
+        } else if (isIOS && !isInStandaloneMode) {
+            // iOS path — show instructions toast
+            showIOSInstallInstructions();
+        }
+    }
+
+    // Show iOS "Add to Home Screen" instructions
+    function showIOSInstallInstructions() {
+        const existing = document.getElementById('iosInstallToast');
+        if (existing) { existing.remove(); }
+        const toast = document.createElement('div');
+        toast.id = 'iosInstallToast';
+        toast.style.cssText = `
+            position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+            background:#1e1b3a;color:#fff;border-radius:16px;padding:18px 22px;
+            box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:9999;max-width:340px;
+            width:calc(100% - 32px);font-size:0.875rem;line-height:1.5;
+            border:1px solid rgba(255,255,255,0.15);
+        `;
+        toast.innerHTML = `
+            <div style="display:flex;align-items:flex-start;gap:12px;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                <div>
+                    <strong style="font-size:0.95rem;">Install CONNECT</strong><br>
+                    Tap <strong>Share</strong> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                    then <strong>Add to Home Screen</strong>
+                </div>
+                <button onclick="this.closest('#iosInstallToast').remove()" style="background:none;border:none;color:rgba(255,255,255,0.5);font-size:1.2rem;cursor:pointer;padding:0;margin-left:4px;line-height:1;">×</button>
+            </div>`;
+        document.body.appendChild(toast);
+        setTimeout(() => { if (toast.parentNode) toast.remove(); }, 12000);
+    }
+
+    // Show iOS install prompt automatically (once per session) on iOS
+    if (isIOS && !isInStandaloneMode && !sessionStorage.getItem('iosPromptShown')) {
+        sessionStorage.setItem('iosPromptShown', '1');
+        setTimeout(showIOSInstallInstructions, 4000);
+        // Also show the install button on iOS
+        const btn = document.getElementById('installBtn');
+        if (btn) btn.style.display = '';
+    }
+
+    function showPWAToast(message, type) {
+        const container = document.getElementById('toast-container') || (() => {
+            const c = document.createElement('div');
+            c.id = 'toast-container';
+            c.className = 'toast-container position-fixed top-0 end-0 p-3';
+            c.style.zIndex = '9999';
+            document.body.appendChild(c);
+            return c;
+        })();
+        const el = document.createElement('div');
+        el.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'primary'} border-0`;
+        el.setAttribute('role', 'alert');
+        el.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+        container.appendChild(el);
+        new bootstrap.Toast(el, { delay: 4000 }).show();
+        el.addEventListener('hidden.bs.toast', () => el.remove());
+    }
+
+    function shareApp() {
+        if (navigator.share) {
+            navigator.share({ title: 'CONNECT', text: 'Manage your Self-Help Group with CONNECT', url: window.location.origin })
+                .catch(() => {});
+        } else {
+            navigator.clipboard ? navigator.clipboard.writeText(window.location.origin)
+                .then(() => showPWAToast('App link copied!', 'success'))
+                .catch(() => {}) : null;
+        }
+    }
+
+    // ─── Service Worker ─────────────────────────────────────────────────────────
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(reg => {
+                reg.update().catch(() => {});
+            })
+            .catch(err => {
+                console.warn('[CONNECT] Service worker registration failed:', err);
+            });
+    }
+    </script>
+    {% endif %}
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

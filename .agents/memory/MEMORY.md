@@ -1,0 +1,3 @@
+- [CONNECT platform setup](connect-platform.md) — multi-group SHG platform; migration required for new columns; super admin credentials stored in app.py init block.
+- [Bug-fix decisions](connect-bugfixes.md) — Key patterns fixed: email-validator install, from_json Jinja filter, WelfareExpenseForm, DateTimeField format list, fines/announcements allow Chairman role, offcanvas mobile nav, bank_name columns.
+- [Template safety patterns](connect-template-safety.md) — Critical patterns for safe Jinja2 templates: list|length vs int, nullable relationship guards, list comparison bugs.

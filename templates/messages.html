@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Messages — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-4">
+    {% if action == 'View' and message %}
+    <!-- ─── View Single Message ─────────────────────────────────────── -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header d-flex justify-content-between align-items-center" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">
+                    <div>
+                        <h5 class="mb-0"><i class="fas fa-envelope-open me-2"></i>{{ message.subject }}</h5>
+                        <small style="opacity:0.8;">{{ message.message_type.replace('_',' ').title() }}</small>
+                    </div>
+                    <span class="badge bg-light text-dark">{{ message.created_at.strftime('%d %b %Y %H:%M') }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-3 mb-3 pb-3 border-bottom">
+                        <div>
+                            <i class="fas fa-user-circle fa-2x text-muted"></i>
+                        </div>
+                        <div>
+                            <strong>{{ message.sender.full_name }}</strong>
+                            <span class="badge bg-secondary ms-1">{{ message.sender.role }}</span><br>
+                            <small class="text-muted">To: {{ message.recipient.full_name }}</small>
+                        </div>
+                    </div>
+                    <div class="message-body" style="white-space:pre-wrap;line-height:1.7;">{{ message.body }}</div>
+                </div>
+                <div class="card-footer d-flex gap-2">
+                    <a href="{{ url_for('compose_message') }}?to={{ message.sender_id }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-reply me-1"></i>Reply
+                    </a>
+                    <a href="{{ url_for('messages') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Inbox
+                    </a>
+                    <form action="{{ url_for('delete_message', msg_id=message.id) }}" method="POST" class="ms-auto"
+                          onsubmit="return confirm('Delete this message?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="fas fa-trash me-1"></i>Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% elif action == 'Compose' %}
+    <!-- ─── Compose Message ─────────────────────────────────────────── -->
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="card shadow">
+                <div class="card-header" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">
+                    <h5 class="mb-0"><i class="fas fa-pen me-2"></i>Compose Message</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">{{ form.recipient_id.label.text }}</label>
+                            {{ form.recipient_id(class="form-select") }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">{{ form.message_type.label.text }}</label>
+                            {{ form.message_type(class="form-select") }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">{{ form.subject.label.text }}</label>
+                            {{ form.subject(class="form-control", placeholder="Message subject...") }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">{{ form.body.label.text }}</label>
+                            {{ form.body(class="form-control", rows=6, placeholder="Type your message here...") }}
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-1"></i>Send Message
+                            </button>
+                            <a href="{{ url_for('messages') }}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- ─── Inbox / Sent ──────────────────────────────────────────────── -->
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold mb-0">
+                    <i class="fas fa-inbox me-2 text-primary"></i>Messages
+                    {% if unread_count > 0 %}
+                    <span class="badge bg-danger ms-2" id="unreadBadge">{{ unread_count }} unread</span>
+                    {% endif %}
+                </h4>
+                <div class="d-flex gap-2">
+                    {% if unread_count > 0 %}
+                    <button class="btn btn-outline-secondary btn-sm" onclick="markAllMessagesRead()" title="Mark all as read">
+                        <i class="fas fa-check-double me-1"></i>Mark all read
+                    </button>
+                    {% endif %}
+                    <a href="{{ url_for('compose_message') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-1"></i>New Message
+                    </a>
+                </div>
+            </div>
+
+            <ul class="nav nav-pills mb-3" id="msgTab">
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#inbox">
+                    <i class="fas fa-inbox me-1"></i>Inbox {% if unread_count > 0 %}<span class="badge bg-danger ms-1">{{ unread_count }}</span>{% endif %}
+                </button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#sent">
+                    <i class="fas fa-paper-plane me-1"></i>Sent
+                </button></li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Inbox Tab -->
+                <div class="tab-pane fade show active" id="inbox">
+                    {% if inbox %}
+                    <div class="list-group shadow-sm">
+                        {% for msg in inbox %}
+                        <a href="{{ url_for('view_message', msg_id=msg.id) }}"
+                           class="list-group-item list-group-item-action d-flex gap-3 align-items-start py-3 {{ 'fw-bold' if not msg.is_read }}">
+                            <div class="flex-shrink-0">
+                                {% if not msg.is_read %}
+                                <i class="fas fa-circle text-primary" style="font-size:0.5rem;margin-top:0.5rem;"></i>
+                                {% else %}
+                                <i class="fas fa-circle text-muted" style="font-size:0.5rem;margin-top:0.5rem;opacity:0.3;"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="{{ 'fw-bold' if not msg.is_read }}">{{ msg.sender.full_name }}</span>
+                                    <small class="text-muted text-nowrap ms-2">{{ msg.created_at.strftime('%d %b %H:%M') }}</small>
+                                </div>
+                                <div class="{{ 'fw-semibold' if not msg.is_read }}">{{ msg.subject }}</div>
+                                <small class="text-muted text-truncate d-block">{{ msg.body[:80] }}{% if msg.body|length > 80 %}...{% endif %}</small>
+                            </div>
+                            <span class="badge bg-{{ 'primary' if msg.message_type == 'general' else 'warning text-dark' if msg.message_type == 'savings_reminder' else 'danger' if 'loan' in msg.message_type else 'secondary' }} align-self-center">{{ msg.message_type.replace('_',' ').title() }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i>
+                        <p>Your inbox is empty.</p>
+                        <a href="{{ url_for('compose_message') }}" class="btn btn-outline-primary btn-sm">Send a Message</a>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Sent Tab -->
+                <div class="tab-pane fade" id="sent">
+                    {% if sent %}
+                    <div class="list-group shadow-sm">
+                        {% for msg in sent %}
+                        <a href="{{ url_for('view_message', msg_id=msg.id) }}"
+                           class="list-group-item list-group-item-action d-flex gap-3 align-items-start py-3">
+                            <i class="fas fa-paper-plane text-muted mt-1 flex-shrink-0"></i>
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>To: {{ msg.recipient.full_name }}</span>
+                                    <small class="text-muted text-nowrap ms-2">{{ msg.created_at.strftime('%d %b %H:%M') }}</small>
+                                </div>
+                                <div>{{ msg.subject }}</div>
+                                <small class="text-muted text-truncate d-block">{{ msg.body[:80] }}{% if msg.body|length > 80 %}...{% endif %}</small>
+                            </div>
+                            {% if msg.is_read %}
+                            <span class="badge bg-success align-self-center">Read</span>
+                            {% else %}
+                            <span class="badge bg-secondary align-self-center">Unread</span>
+                            {% endif %}
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-paper-plane fa-3x mb-3 opacity-25"></i>
+                        <p>No sent messages yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function markAllMessagesRead() {
+    fetch('{{ url_for("mark_all_messages_read") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'}
+    }).then(r => r.json()).then(data => {
+        if (data.success) { location.reload(); }
+    }).catch(() => location.reload());
+}
+</script>
+{% endblock %}

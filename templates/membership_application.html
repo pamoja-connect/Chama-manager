@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Apply for Membership — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow border-0">
+                <div class="card-header text-white text-center py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="mb-2">
+                        <img src="{{ url_for('static', filename='uploads/pamoja_logo.png') }}" alt="CONNECT" style="height:50px;border-radius:8px;" onerror="this.style.display='none'">
+                    </div>
+                    <h3 class="mb-0 fw-bold"><i class="fas fa-user-plus me-2"></i>Membership Application</h3>
+                    <p class="mb-0 mt-1 opacity-75">
+                        {% if groups and groups|length == 1 %}
+                            Join {{ groups[0].name }}
+                        {% else %}
+                            Join a Group on {{ app_name }}
+                        {% endif %}
+                    </p>
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="alert alert-info border-0" style="background:rgba(102,126,234,0.1);">
+                        <i class="fas fa-info-circle me-2 text-primary"></i>
+                        Fill in all fields accurately. Upload a clear photo of your National ID or Passport.
+                        Your application will be reviewed by the group administrator.
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+
+                        <h6 class="fw-bold text-primary border-bottom pb-2 mb-3 mt-3">
+                            <i class="fas fa-user me-2"></i>Personal Information
+                        </h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                {{ form.full_name.label(class="form-label fw-semibold") }}
+                                {{ form.full_name(class="form-control", placeholder="Your full legal name") }}
+                                {% for error in form.full_name.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.email.label(class="form-label fw-semibold") }}
+                                {{ form.email(class="form-control", placeholder="your@email.com") }}
+                                {% for error in form.email.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.phone.label(class="form-label fw-semibold") }}
+                                {{ form.phone(class="form-control", placeholder="07XXXXXXXX") }}
+                                {% for error in form.phone.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.id_number.label(class="form-label fw-semibold") }}
+                                {{ form.id_number(class="form-control", placeholder="National ID or Passport No.") }}
+                                {% for error in form.id_number.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.location.label(class="form-label fw-semibold") }}
+                                {{ form.location(class="form-control", placeholder="e.g. Mombasa, Kenya") }}
+                                {% for error in form.location.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.occupation.label(class="form-label fw-semibold") }}
+                                {{ form.occupation(class="form-control", placeholder="e.g. Teacher, Trader") }}
+                                {% for error in form.occupation.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-primary border-bottom pb-2 mb-3 mt-4">
+                            <i class="fas fa-id-card me-2"></i>Identity Verification
+                        </h6>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                {{ form.id_document.label(class="form-label fw-semibold") }}
+                                {{ form.id_document(class="form-control", accept="image/*,.pdf") }}
+                                <div class="form-text">Upload a clear photo or scan of your National ID (front) or Passport. Max 5MB. PNG, JPG, or PDF.</div>
+                                {% for error in form.id_document.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
+                        </div>
+
+                        {% if groups and groups|length > 1 %}
+                        <h6 class="fw-bold text-primary border-bottom pb-2 mb-3 mt-4">
+                            <i class="fas fa-layer-group me-2"></i>Group Selection
+                        </h6>
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                {{ form.group_code.label(class="form-label fw-semibold") }}
+                                {{ form.group_code(class="form-control", placeholder="Enter the 8-character code from your group admin") }}
+                                <div class="form-text">
+                                    Available groups: 
+                                    {% for g in groups %}<strong>{{ g.name }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}.
+                                    Ask your group admin for the registration code.
+                                </div>
+                            </div>
+                        </div>
+                        {% elif groups and groups|length == 1 %}
+                        <input type="hidden" name="group_code" value="">
+                        {% endif %}
+
+                        <h6 class="fw-bold text-primary border-bottom pb-2 mb-3 mt-4">
+                            <i class="fas fa-comment-dots me-2"></i>Additional Information
+                        </h6>
+                        <div class="mb-3">
+                            {{ form.reason_for_joining.label(class="form-label fw-semibold") }}
+                            {{ form.reason_for_joining(class="form-control", rows=4, placeholder="Tell us why you want to join and what you hope to achieve through the group...") }}
+                            {% for error in form.reason_for_joining.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <div class="d-flex gap-3 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg flex-fill">
+                                <i class="fas fa-paper-plane me-2"></i>Submit Application
+                            </button>
+                            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card-footer text-center text-muted small py-3">
+                    <i class="fas fa-shield-alt me-1"></i>Your information is kept confidential and used only for group membership.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

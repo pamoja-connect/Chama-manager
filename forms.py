@@ -4,13 +4,30 @@ from flask_wtf.file import FileField, FileAllowed
 from wtforms import (StringField, TextAreaField, FloatField, SelectField,
                      DateTimeField, BooleanField, PasswordField, DateField,
                      IntegerField, SelectMultipleField)
-from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional, ValidationError
+from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange, Optional, ValidationError
 from wtforms.widgets import TextArea
 
 
 class LoginForm(FlaskForm):
     username = SelectField('Username', choices=[], validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
+
+
+class PasswordResetRequestForm(FlaskForm):
+    email = StringField('Email address', validators=[DataRequired(), Email(), Length(max=120)])
+
+
+class PasswordResetForm(FlaskForm):
+    password = PasswordField(
+        'New password',
+        validators=[DataRequired(), Length(min=12, max=128)],
+        render_kw={"autocomplete": "new-password"},
+    )
+    confirm_password = PasswordField(
+        'Confirm new password',
+        validators=[DataRequired(), EqualTo('password', message='Passwords must match.')],
+        render_kw={"autocomplete": "new-password"},
+    )
 
 
 class DeletionForm(FlaskForm):

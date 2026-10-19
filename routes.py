@@ -1,15 +1,117 @@
 import os
 import json
+import hashlib
+import hmac
+import secrets
+import subprocess
+import threading
 from datetime import datetime, timedelta
+from html import escape as html_escape
 from flask import render_template, request, redirect, url_for, flash, jsonify, send_file, make_response, session
 from flask_login import login_user, logout_user, login_required, current_user
+from sqlalchemy import func
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from app import app, db
-from models import User, Contribution, Loan, LoanRepayment, Fine, Announcement, MeetingRecord, Document, Project, Notification, MembershipApplication, OfflineData, MemberPoints, UserBadge, Badge, Vote, VotingProposal, Payment, DigitalReceipt, WelfareContribution, WelfareExpense, Group, InAppMessage, LoanSettlement, FineSettlement, ActivityLog
+from models import User, Contribution, Loan, LoanRepayment, Fine, Announcement, MeetingRecord, Document, Project, Notification, MembershipApplication, OfflineData, MemberPoints, UserBadge, Badge, Vote, VotingProposal, Payment, DigitalReceipt, WelfareContribution, WelfareExpense, Group, InAppMessage, LoanSettlement, FineSettlement, ActivityLog, PasswordResetToken
 from forms import *
 from utils import *
 from utils import format_date, format_datetime
+
+_PASSWORD_RESET_REQUESTS = {}
+_PASSWORD_RESET_LOCK = threading.Lock()
+
+
+def _password_reset_ip_allowed():
+    """Allow up to five valid reset requests per source IP in a rolling hour."""
+    remote_addr = request.remote_addr or 'unknown'
+    key = hmac.new(
+        str(app.secret_key).encode('utf-8'),
+        remote_addr.encode('utf-8'),
+        hashlib.sha256,
+    ).hexdigest()
+    now = datetime.utcnow()
+    cutoff = now - timedelta(hours=1)
+
+    with _PASSWORD_RESET_LOCK:
+        if len(_PASSWORD_RESET_REQUESTS) > 2048:
+            for old_key, timestamps in list(_PASSWORD_RESET_REQUESTS.items()):
+                if not timestamps or timestamps[-1] < cutoff:
+                    _PASSWORD_RESET_REQUESTS.pop(old_key, None)
+
+        timestamps = _PASSWORD_RESET_REQUESTS.setdefault(key, [])
+        timestamps[:] = [timestamp for timestamp in timestamps if timestamp >= cutoff]
+        if len(timestamps) >= 5:
+            return False
+        timestamps.append(now)
+        return True
+
+
+def _password_reset_user_is_eligible(user):
+    if not user or not user.is_active:
+        return False
+    if user.is_super_admin:
+        return True
+    return bool(
+        user.group_id
+        and Group.query.filter_by(id=user.group_id, is_active=True).first()
+    )
+
+
+def _send_password_reset_email(user, reset_url, group_name):
+    """Send a reset link through the connected Resend integration."""
+    sender = os.environ.get('RESEND_FROM_EMAIL', '').strip()
+    if not sender:
+        return False
+
+    account_label = group_name or 'CONNECT platform'
+    safe_label = html_escape(account_label)
+    safe_url = html_escape(reset_url, quote=True)
+    subject = 'Reset your account password'
+    text = (
+        f'We received a request to reset the password for your {account_label} account.\n\n'
+        f'Reset your password using this link (expires in 30 minutes):\n{reset_url}\n\n'
+        'If you did not request this, you can ignore this email.'
+    )
+    html = (
+        '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#243047">'
+        f'<h2>Password reset for {safe_label}</h2>'
+        '<p>We received a request to reset the password for your account.</p>'
+        f'<p><a href="{safe_url}" style="display:inline-block;padding:12px 18px;'
+        'background:#764ba2;color:#fff;text-decoration:none;border-radius:6px">'
+        'Reset password</a></p>'
+        '<p>This link expires in 30 minutes and can be used only once.</p>'
+        '<p>If you did not request this, you can ignore this email.</p>'
+        '</div>'
+    )
+    payload = {
+        'from': sender,
+        'to': [user.email],
+        'subject': subject,
+        'text': text,
+        'html': html,
+    }
+    script_path = os.path.join(app.root_path, 'scripts', 'send_password_reset_email.cjs')
+
+    try:
+        result = subprocess.run(
+            ['node', script_path],
+            input=json.dumps(payload),
+            text=True,
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        app.logger.warning('Password-reset email dispatch failed (%s).', type(exc).__name__)
+        return False
+
+    if result.returncode != 0:
+        # Do not log subprocess output: it can contain request data.
+        app.logger.warning('Password-reset email dispatch failed in the Resend connector.')
+        return False
+    return True
+
 
 # Notification helper functions
 def create_loan_notification(loan):
@@ -295,6 +397,133 @@ def login():
             flash('Invalid username or password', 'error')
 
     return render_template('login.html', form=form, selected_group=selected_group)
+
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """Request a password-reset link for a group account or the CONNECT admin."""
+    group_id = request.args.get('group', type=int)
+    selected_group = None
+    if group_id:
+        selected_group = Group.query.filter_by(id=group_id, is_active=True).first_or_404()
+
+    form = PasswordResetRequestForm()
+    if form.validate_on_submit():
+        if not _password_reset_ip_allowed():
+            flash('If an account matches that email, reset instructions will be sent shortly.', 'info')
+        elif not os.environ.get('RESEND_FROM_EMAIL', '').strip():
+            flash('Password reset email is not available right now. Please contact an administrator.', 'warning')
+        else:
+            email = form.email.data.strip().lower()
+            user_query = User.query.filter(
+                func.lower(User.email) == email,
+                User.is_active.is_(True),
+            )
+            if selected_group:
+                user_query = user_query.filter(
+                    User.group_id == selected_group.id,
+                    User.is_super_admin.is_(False),
+                )
+            else:
+                user_query = user_query.filter(User.is_super_admin.is_(True))
+            user = user_query.first()
+
+            if user:
+                now = datetime.utcnow()
+                recent_token = PasswordResetToken.query.filter(
+                    PasswordResetToken.user_id == user.id,
+                    PasswordResetToken.created_at >= now - timedelta(minutes=1),
+                ).first()
+                if not recent_token:
+                    raw_token = secrets.token_urlsafe(32)
+                    token_record = PasswordResetToken(
+                        user_id=user.id,
+                        token_hash=hashlib.sha256(raw_token.encode('utf-8')).hexdigest(),
+                        expires_at=now + timedelta(minutes=30),
+                    )
+                    for previous_token in PasswordResetToken.query.filter_by(
+                        user_id=user.id,
+                        used_at=None,
+                    ).all():
+                        previous_token.used_at = now
+                    db.session.add(token_record)
+                    db.session.commit()
+
+                    group_name = (
+                        user.group.name
+                        if not user.is_super_admin and user.group
+                        else 'CONNECT platform'
+                    )
+                    reset_url = url_for('reset_password', token=raw_token, _external=True)
+                    if not _send_password_reset_email(user, reset_url, group_name):
+                        token_record.used_at = datetime.utcnow()
+                        db.session.commit()
+
+            flash('If an account matches that email, reset instructions will be sent shortly.', 'info')
+
+    return render_template(
+        'password_reset_request.html',
+        form=form,
+        selected_group=selected_group,
+    )
+
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """Set a new password using a single-use, expiring reset token."""
+    invalid_message = 'This password-reset link is invalid or has expired. Please request a new one.'
+    if not token or len(token) > 128:
+        flash(invalid_message, 'error')
+        return redirect(url_for('login'))
+
+    token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
+    reset_record = PasswordResetToken.query.filter_by(token_hash=token_hash).first()
+    now = datetime.utcnow()
+    if (
+        not reset_record
+        or reset_record.used_at is not None
+        or reset_record.expires_at <= now
+        or not _password_reset_user_is_eligible(reset_record.user)
+    ):
+        flash(invalid_message, 'error')
+        return redirect(url_for('login'))
+
+    user = reset_record.user
+    form = PasswordResetForm()
+    if form.validate_on_submit():
+        # Lock the token row so two concurrent submissions cannot both succeed.
+        reset_record = PasswordResetToken.query.filter_by(token_hash=token_hash).with_for_update().first()
+        now = datetime.utcnow()
+        if (
+            not reset_record
+            or reset_record.used_at is not None
+            or reset_record.expires_at <= now
+            or not _password_reset_user_is_eligible(reset_record.user)
+        ):
+            flash(invalid_message, 'error')
+            return redirect(url_for('login'))
+
+        user = reset_record.user
+        user.password_hash = generate_password_hash(form.password.data)
+        reset_record.used_at = now
+        for other_token in PasswordResetToken.query.filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.id != reset_record.id,
+            PasswordResetToken.used_at.is_(None),
+        ).all():
+            other_token.used_at = now
+        db.session.commit()
+
+        flash('Your password has been reset. Sign in with your new password.', 'success')
+        login_args = {'group': user.group_id} if not user.is_super_admin and user.group_id else {}
+        return redirect(url_for('login', **login_args))
+
+    response = make_response(render_template('password_reset.html', form=form))
+    response.headers['Cache-Control'] = 'no-store, max-age=0'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    response.headers['X-Robots-Tag'] = 'noindex, nofollow'
+    return response
+
 
 @app.route('/verify-2fa/<int:user_id>', methods=['GET', 'POST'])
 def verify_2fa(user_id):

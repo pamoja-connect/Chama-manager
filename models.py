@@ -75,6 +75,17 @@ class User(UserMixin, db.Model):
         return f'<User {self.username}>'
 
 
+class PasswordResetToken(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    token_hash = db.Column(db.String(64), nullable=False, unique=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used_at = db.Column(db.DateTime)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+
+
 class Contribution(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     member_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)

@@ -18,3 +18,4 @@ Werkzeug
 wtforms
 psycopg2-binary
 firebase-admin
+psycopg[binary]

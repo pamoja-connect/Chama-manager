@@ -67,7 +67,7 @@
                 {% if current_group and current_group.logo %}
                 <img src="{{ url_for('static', filename='uploads/' + current_group.logo) }}" alt="Logo" style="height:36px;width:36px;border-radius:6px;object-fit:cover;">
                 {% else %}
-                <img src="{{ url_for('static', filename='uploads/pamoja_logo.png') }}" alt="CONNECT" style="height:36px;width:36px;border-radius:6px;object-fit:cover;" onerror="this.style.display='none'">
+                <img src="{{ url_for('static', filename='images/pamoja_logo.png') }}" alt="CONNECT" style="height:36px;width:36px;border-radius:6px;object-fit:cover;" onerror="this.style.display='none'">
                 {% endif %}
                 <span class="navbar-brand-text d-none d-sm-inline">
                     {% if current_user.is_super_admin %}

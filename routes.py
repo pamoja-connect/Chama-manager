@@ -2651,9 +2651,18 @@ def review_membership_application(app_id):
         application = MembershipApplication.query.get_or_404(app_id)
         action = request.form.get('action')
 
+        if application.status in ('Approved', 'Rejected'):
+            flash(f'This application was already {application.status.lower()}.', 'info')
+            return redirect(url_for('membership_applications'))
+
         if action == 'approve':
             # Determine which group to add the member to
             target_group_id = application.group_id or current_user.group_id
+
+            existing = User.query.filter(db.func.lower(User.email) == (application.email or '').strip().lower()).first()
+            if existing:
+                flash('This email already belongs to an existing member, so nothing was created. Check the members list, or reject this duplicate application.', 'error')
+                return redirect(url_for('membership_applications'))
 
             # Check if username already exists - use full name based username
             base_username = application.full_name.upper().replace(' ', '_')[:30]
@@ -2663,7 +2672,7 @@ def review_membership_application(app_id):
                 username = f"{base_username}_{counter}"
                 counter += 1
 
-            default_password = 'connect@2024'
+            default_password = __import__('secrets').token_urlsafe(8)
             new_user = User(
                 username=username,
                 full_name=application.full_name,
@@ -2756,7 +2765,8 @@ def review_membership_application(app_id):
 
     except Exception as e:
         db.session.rollback()
-        flash(f'Error processing application: {str(e)}', 'error')
+        app.logger.exception('Error processing application')
+        flash('Something went wrong processing this application. Please try again.', 'error')
         return redirect(url_for('membership_applications'))
 
 # ─── PWA / Offline ───────────────────────────────────────────────────────────

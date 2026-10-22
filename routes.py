@@ -678,6 +678,8 @@ def switch_group():
 @login_required
 def dashboard():
     """Main dashboard - role-based content."""
+    if current_user.is_super_admin:
+        return redirect(url_for('super_admin_dashboard'))
     gid = get_active_group_id()
     stats = get_group_statistics(group_id=gid)
 

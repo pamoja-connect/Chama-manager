@@ -392,7 +392,7 @@
                                 <i class="fas fa-chart-bar me-2"></i>View Reports
                             </a>
                             {% if current_user.role == 'Admin' %}
-                            <a href="{{ url_for('activity_log') }}" class="btn btn-outline-secondary">
+                            <a href="{{ url_for('admin_activity_log') }}" class="btn btn-outline-secondary">
                                 <i class="fas fa-history me-2"></i>Activity Log
                             </a>
                             {% endif %}

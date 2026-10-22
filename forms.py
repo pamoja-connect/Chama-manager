@@ -63,6 +63,12 @@ class VoteForm(FlaskForm):
 
 
 class LoanApplicationForm(FlaskForm):
+    borrower_name = StringField('Borrower Name (external loans)', validators=[Optional(), Length(max=100)])
+    borrower_phone = StringField('Borrower Phone', validators=[Optional(), Length(max=20)])
+    borrower_address = StringField('Borrower Address', validators=[Optional(), Length(max=200)])
+    id_number = StringField('ID Number', validators=[Optional(), Length(max=10)])
+    kra_pin = StringField('KRA PIN', validators=[Optional(), Length(max=11)])
+    signature_consent = BooleanField('I consent to this application', validators=[Optional()])
     amount = FloatField('Loan Amount (KSh)', validators=[DataRequired(), NumberRange(min=100)])
     purpose = TextAreaField('Purpose of Loan', validators=[DataRequired(), Length(min=10, max=500)])
     duration_months = SelectField('Duration (Months)', choices=[

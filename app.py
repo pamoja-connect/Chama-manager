@@ -92,7 +92,7 @@ with app.app_context():
                 email='admin@connect-shg.app',
                 phone='0000000000',
                 role='Admin',
-                password_hash=generate_password_hash('connect@admin2024'),
+                password_hash=generate_password_hash(''),
                 is_active=True,
                 is_super_admin=True,
                 group_id=None
@@ -110,7 +110,7 @@ with app.app_context():
             email='pamojaagenciesshg@gmail.com',
             phone='254799466723',
             role='Admin',
-            password_hash=generate_password_hash('34338006tuva'),
+            password_hash=generate_password_hash(''),
             is_active=True,
             group_id=default_group.id
         )

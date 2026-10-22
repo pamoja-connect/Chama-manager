@@ -2958,6 +2958,11 @@ def toggle_group(group_id):
     grp.is_active = not grp.is_active
     db.session.commit()
     status = 'activated' if grp.is_active else 'deactivated'
+    try:
+        from activity_logger import log_activity
+        log_activity(status, 'group', grp.id, f'Group "{grp.name}" was {status}', group_id=grp.id)
+    except Exception:
+        pass
     flash(f'Group "{grp.name}" has been {status}.', 'success')
     return redirect(url_for('groups'))
 
@@ -3212,3 +3217,121 @@ def add_member_to_group():
         return redirect(url_for('members'))
     return redirect(url_for('add_member'))
 
+
+
+@app.route('/groups/<int:group_id>/delete', methods=['POST'])
+@login_required
+def delete_group(group_id):
+    """Permanently delete a DEACTIVATED group and all its records (super admin only)."""
+    import json
+    from flask import Response
+    from sqlalchemy import select, delete as sa_delete, or_
+    from datetime import datetime
+
+    if not current_user.is_super_admin:
+        flash('Permission denied.', 'error')
+        return redirect(url_for('groups'))
+    grp = Group.query.get_or_404(group_id)
+    if grp.is_active:
+        flash('Deactivate the group first, then delete it.', 'error')
+        return redirect(url_for('groups'))
+    if request.form.get('confirm_name', '').strip() != grp.name:
+        flash('The group name you typed does not match. Nothing was deleted.', 'error')
+        return redirect(url_for('groups'))
+    if User.query.filter_by(group_id=grp.id, is_super_admin=True).count():
+        flash('A platform administrator account belongs to this group. Move it to another group first.', 'error')
+        return redirect(url_for('groups'))
+
+    def single_pk(t):
+        cols = list(t.primary_key.columns)
+        return cols[0] if len(cols) == 1 else None
+
+    try:
+        gname = Group.__table__.name
+        ids = {gname: {grp.id}}
+        skipped = []
+        changed = True
+        while changed:
+            changed = False
+            for t in db.metadata.sorted_tables:
+                if t.name == gname:
+                    continue
+                pk = single_pk(t)
+                conds = []
+                if 'group_id' in t.c:
+                    conds.append(t.c.group_id == grp.id)
+                else:
+                    for fk in t.foreign_keys:
+                        parent = fk.column.table
+                        if parent is t or parent.name not in ids:
+                            continue
+                        if single_pk(parent) is not fk.column:
+                            continue
+                        conds.append(fk.parent.in_(list(ids[parent.name])))
+                if not conds:
+                    continue
+                if pk is None:
+                    if t.name not in skipped:
+                        skipped.append(t.name)
+                    continue
+                found = {r[0] for r in db.session.execute(select(pk).where(or_(*conds)))}
+                known = ids.setdefault(t.name, set())
+                if not found <= known:
+                    known |= found
+                    changed = True
+        if skipped:
+            flash('Not deleted. These tables have no simple id: ' + ', '.join(skipped), 'error')
+            return redirect(url_for('groups'))
+
+        counts = {n: len(v) for n, v in ids.items() if v}
+        if request.form.get('dry_run'):
+            flash('Preview, would delete: ' + ', '.join(f'{n}: {c}' for n, c in sorted(counts.items())), 'info')
+            return redirect(url_for('groups'))
+
+        by_name = {t.name: t for t in db.metadata.sorted_tables}
+        backup = {'group': grp.name, 'group_id': grp.id,
+                  'deleted_at': datetime.utcnow().isoformat(),
+                  'deleted_by': current_user.full_name, 'tables': {}}
+        for n, v in ids.items():
+            if not v:
+                continue
+            t = by_name[n]
+            rows = db.session.execute(select(t).where(single_pk(t).in_(list(v)))).all()
+            backup['tables'][n] = [{k: val for k, val in r._mapping.items() if k != 'password_hash'} for r in rows]
+        payload = json.dumps(backup, default=str, indent=1)
+
+        for t in reversed(db.metadata.sorted_tables):
+            if ids.get(t.name):
+                db.session.execute(sa_delete(t).where(single_pk(t).in_(list(ids[t.name]))))
+        db.session.commit()
+
+        from activity_logger import log_activity
+        log_activity('deleted', 'group', group_id,
+                     f'Deleted group "{backup["group"]}" ({sum(counts.values())} records)', group_id=None)
+        return Response(payload, mimetype='application/json',
+                        headers={'Content-Disposition': f'attachment; filename=group-{group_id}-backup.json'})
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('Group delete failed')
+        flash('The group could not be deleted, so nothing was removed.', 'error')
+        return redirect(url_for('groups'))
+
+
+@app.route('/admin/activity-log')
+@login_required
+def admin_activity_log():
+    if not current_user.is_super_admin:
+        flash('Permission denied.', 'error')
+        return redirect(url_for('dashboard'))
+    from models import ActivityLog
+    gid = request.args.get('group_id', type=int)
+    q = ActivityLog.query
+    if gid:
+        q = q.filter(ActivityLog.group_id == gid)
+    rows = q.order_by(ActivityLog.id.desc()).limit(200).all()
+    uids = list({r.user_id for r in rows if r.user_id})
+    users = {u.id: u.full_name for u in User.query.filter(User.id.in_(uids)).all()} if uids else {}
+    groups_list = Group.query.order_by(Group.name).all()
+    gnames = {g.id: g.name for g in groups_list}
+    return render_template('activity_log.html', rows=rows, users=users,
+                           gnames=gnames, groups=groups_list, selected=gid)

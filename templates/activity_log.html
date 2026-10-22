@@ -1,56 +1,29 @@
-{% extends "base.html" %}
-
-{% block title %}Activity Log - Pamoja Agencies SHG{% endblock %}
-
-{% block content %}
-<div class="container my-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1>
-                    <i class="fas fa-history me-2"></i>System Activity Log
-                </h1>
-                {% if activities %}
-                <form method="POST" action="{{ url_for('clear_activity_log') }}" onsubmit="return confirm('Are you sure you want to clear all activity logs? This action cannot be undone.')">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-outline-danger">
-                        <i class="fas fa-trash me-2"></i>Clear Log
-                    </button>
-                </form>
-                {% endif %}
-            </div>
-
-            {% if activities %}
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Timestamp</th>
-                                    <th>Details</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for activity in activities %}
-                                <tr>
-                                    <td>{{ activity.timestamp }}</td>
-                                    <td>{{ activity.details }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            {% else %}
-            <div class="text-center py-5">
-                <i class="fas fa-history fa-3x text-muted mb-3"></i>
-                <h5 class="text-center text-muted">No activity recorded yet</h5>
-                <p class="text-center text-muted">System activities will appear here</p>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
-{% endblock %}
+<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Activity log</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="p-3">
+<a href="{{ url_for('groups') }}">&larr; Back to groups</a>
+<h4 class="mt-2">Activity log</h4>
+<form method="get" class="mb-3">
+  <select name="group_id" class="form-select" onchange="this.form.submit()">
+    <option value="">All groups</option>
+    {% for g in groups %}<option value="{{ g.id }}" {{ 'selected' if selected == g.id }}>{{ g.name }}</option>{% endfor %}
+  </select>
+</form>
+<div class="table-responsive"><table class="table table-sm">
+<thead><tr><th>When (UTC)</th><th>Who</th><th>Group</th><th>Action</th><th>Details</th></tr></thead>
+<tbody>
+{% for r in rows %}
+<tr><td>{{ r.timestamp.strftime('%d %b %H:%M') if r.timestamp else '' }}</td>
+<td>{{ users.get(r.user_id, 'System') }}</td>
+<td>{{ gnames.get(r.group_id, '-') }}</td>
+<td>{{ r.action }} {{ r.entity_type or '' }}</td>
+<td>{{ r.description or '' }}</td></tr>
+{% else %}
+<tr><td colspan="5">No activity yet.</td></tr>
+{% endfor %}
+</tbody></table></div>
+</body></html>

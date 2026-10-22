@@ -17,7 +17,7 @@ from werkzeug.utils import secure_filename
 # activity_logger.setLevel(logging.INFO)
 
 # Simple file-based activity logger since ActivityLog model doesn't exist
-def log_activity(action, resource_type, resource_id, details):
+def _log_activity_file(action, resource_type, resource_id, details):
     """Log user activity to file."""
     try:
         # Create logs directory if it doesn't exist
@@ -396,3 +396,38 @@ def reject_new_member_request(request_id, reason=""):
 
 # For API endpoints that don't use forms, you might need to pass the CSRF token
 # in the request header as well.
+
+
+def log_activity(action, resource_type=None, resource_id=None, details=None, group_id='auto'):
+    """Save an audit entry in the activity_log table (falls back to the old file log)."""
+    try:
+        from flask import has_request_context
+        cols = {c.name for c in ActivityLog.__table__.columns}
+        uid = current_user.id if current_user and current_user.is_authenticated else None
+        if group_id == 'auto':
+            group_id = getattr(current_user, 'group_id', None) if uid else None
+        values = {}
+
+        def put(names, value):
+            for n in names:
+                if n in cols:
+                    values[n] = value
+                    return
+
+        put(['user_id'], uid)
+        put(['timestamp'], datetime.utcnow())
+        put(['group_id'], group_id)
+        put(['action'], action)
+        put(['resource_type', 'entity_type', 'target_type'], resource_type)
+        put(['resource_id', 'entity_id', 'target_id'], resource_id)
+        put(['details', 'description'], details)
+        put(['ip_address'], request.remote_addr if has_request_context() else None)
+        db.session.add(ActivityLog(**values))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Could not save activity log row')
+        try:
+            _log_activity_file(action, resource_type, resource_id, details)
+        except Exception:
+            pass

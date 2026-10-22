@@ -177,7 +177,7 @@ class DocumentForm(FlaskForm):
 
 class PasswordChangeForm(FlaskForm):
     current_password = PasswordField('Current Password', validators=[DataRequired()])
-    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=6)])
+    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=12, max=128)])
     confirm_password = PasswordField('Confirm New Password', validators=[DataRequired()])
 
     def validate_confirm_password(self, field):
@@ -194,7 +194,7 @@ class MemberForm(FlaskForm):
         ('Member', 'Member'), ('Secretary', 'Secretary'), ('Treasurer', 'Treasurer'),
         ('Chairman', 'Chairman'), ('Admin', 'Admin')
     ], validators=[DataRequired()])
-    password = PasswordField('Password', validators=[Optional(), Length(min=6)])
+    password = PasswordField('Password', validators=[Optional(), Length(min=12, max=128)])
     profile_picture = FileField('Profile Picture', validators=[Optional(), FileAllowed(['jpg', 'jpeg', 'png'])])
 
 
@@ -223,7 +223,7 @@ class GroupRegistrationForm(FlaskForm):
     admin_full_name = StringField('Group Admin Full Name', validators=[DataRequired(), Length(min=3, max=100)])
     admin_email = StringField('Group Admin Email', validators=[DataRequired(), Email()])
     admin_phone = StringField('Group Admin Phone', validators=[DataRequired(), Length(min=10, max=20)])
-    admin_password = PasswordField('Group Admin Password', validators=[DataRequired(), Length(min=6)])
+    admin_password = PasswordField('Group Admin Password', validators=[DataRequired(), Length(min=12, max=128)])
 
 
 class WelfareExpenseForm(FlaskForm):

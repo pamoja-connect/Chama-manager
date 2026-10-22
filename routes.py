@@ -338,6 +338,114 @@ def delete_record_with_reason(record, record_type, reason, deleted_by_user_id):
     except ImportError:
         pass # activity_logger not available
 
+
+def _group_member_ids(group_id=None, active_only=False):
+    """Return member IDs in the current tenant; None means platform-wide access."""
+    if group_id is None:
+        group_id = get_active_group_id()
+    if current_user.is_super_admin and group_id is None:
+        return None
+    if group_id is None:
+        return []
+    query = db.session.query(User.id).filter(
+        User.group_id == group_id,
+        User.is_super_admin.is_(False),
+    )
+    if active_only:
+        query = query.filter(User.is_active.is_(True))
+    return [member_id for (member_id,) in query.all()]
+
+
+def _can_access_member(member_id):
+    """A group user may only access users assigned to their own group."""
+    if current_user.is_super_admin:
+        return True
+    if not current_user.group_id:
+        return False
+    return User.query.filter_by(
+        id=member_id, group_id=current_user.group_id
+    ).first() is not None
+
+
+def _can_access_record(record):
+    """Check tenant ownership for records, including records linked through a member."""
+    if current_user.is_super_admin:
+        return True
+
+    record_group_id = getattr(record, 'group_id', None)
+    if record_group_id is not None:
+        return bool(current_user.group_id and record_group_id == current_user.group_id)
+
+    member_id = getattr(record, 'member_id', None)
+    if member_id is not None:
+        return _can_access_member(member_id)
+
+    guarantor_id = getattr(record, 'guarantor_id', None)
+    if guarantor_id is not None:
+        return _can_access_member(guarantor_id)
+
+    beneficiary_id = getattr(record, 'beneficiary_id', None)
+    if beneficiary_id is not None:
+        return _can_access_member(beneficiary_id)
+
+    loan_id = getattr(record, 'loan_id', None)
+    if loan_id is not None:
+        loan = Loan.query.get(loan_id)
+        return bool(loan and loan.member_id and _can_access_member(loan.member_id))
+
+    payment_id = getattr(record, 'payment_id', None)
+    if payment_id is not None:
+        payment = Payment.query.get(payment_id)
+        return bool(payment and _can_access_member(payment.member_id))
+
+    contribution_id = getattr(record, 'contribution_id', None)
+    if contribution_id is not None:
+        contribution = Contribution.query.get(contribution_id)
+        return bool(contribution and _can_access_member(contribution.member_id))
+
+    welfare_id = getattr(record, 'welfare_contribution_id', None)
+    if welfare_id is not None:
+        welfare = WelfareContribution.query.get(welfare_id)
+        return bool(welfare and _can_access_member(welfare.member_id))
+
+    repayment_id = getattr(record, 'loan_repayment_id', None)
+    if repayment_id is not None:
+        repayment = LoanRepayment.query.get(repayment_id)
+        loan = Loan.query.get(repayment.loan_id) if repayment else None
+        return bool(loan and loan.member_id and _can_access_member(loan.member_id))
+
+    return False
+
+
+def _welfare_queries():
+    """Return welfare contribution/expense queries limited to the active group."""
+    member_ids = _group_member_ids()
+    contributions = WelfareContribution.query.filter_by(is_deleted=False)
+    expenses = WelfareExpense.query
+    if member_ids is not None:
+        contributions = contributions.filter(WelfareContribution.member_id.in_(member_ids))
+        expenses = expenses.filter(WelfareExpense.beneficiary_id.in_(member_ids))
+    return contributions, expenses
+
+
+@app.before_request
+def enforce_group_account_status():
+    """Immediately revoke access for group accounts whose group is unavailable."""
+    if not current_user.is_authenticated or current_user.is_super_admin:
+        return None
+
+    group = Group.query.filter_by(id=current_user.group_id).first() if current_user.group_id else None
+    if group and group.is_active:
+        return None
+
+    logout_user()
+    session.clear()
+    flash('This group account is unavailable. Contact the platform administrator.', 'error')
+    if request.endpoint in {'login', 'forgot_password', 'reset_password', 'static'}:
+        return None
+    return redirect(url_for('login'))
+
+
 # Make utility functions available in templates
 @app.context_processor
 def utility_processor():
@@ -741,6 +849,9 @@ def edit_member(member_id):
         return redirect(url_for('members'))
 
     member = User.query.get_or_404(member_id)
+    if member.is_super_admin or not _can_access_member(member.id):
+        flash('You do not have permission to edit this account.', 'error')
+        return redirect(url_for('members'))
     form = MemberForm(obj=member)
 
     if form.validate_on_submit():
@@ -765,7 +876,7 @@ def edit_member(member_id):
 
     return render_template('members.html', form=form, member=member, action='Edit')
 
-@app.route('/members/<int:member_id>/deactivate')
+@app.route('/members/<int:member_id>/deactivate', methods=['POST'])
 @login_required
 def deactivate_member(member_id):
     """Deactivate member (Admin only)."""
@@ -774,6 +885,9 @@ def deactivate_member(member_id):
         return redirect(url_for('members'))
 
     member = User.query.get_or_404(member_id)
+    if member.is_super_admin or not _can_access_member(member.id):
+        flash('You do not have permission to deactivate this account.', 'error')
+        return redirect(url_for('members'))
     if member.id == current_user.id:
         flash('You cannot deactivate yourself', 'error')
         return redirect(url_for('members'))
@@ -818,23 +932,39 @@ def add_contribution():
 
     form = ContributionForm()
 
+    if current_user.is_super_admin and not get_active_group_id():
+        flash('Select a group before recording a contribution.', 'warning')
+        return redirect(url_for('groups'))
+
     # Populate member choices - group-filtered
-    if current_user.is_super_admin:
-        active_members = User.query.filter_by(is_active=True).filter(User.is_super_admin == False).all()
-    elif current_user.group_id:
-        active_members = User.query.filter_by(is_active=True, group_id=current_user.group_id).all()
-    else:
-        active_members = User.query.filter_by(is_active=True).all()
+    member_ids = _group_member_ids(active_only=True)
+    member_query = User.query.filter_by(is_active=True).filter(User.is_super_admin.is_(False))
+    if member_ids is not None:
+        member_query = member_query.filter(User.id.in_(member_ids))
+    active_members = member_query.all()
     form.member_id.choices = [(member.id, member.full_name) for member in active_members]
 
     if form.validate_on_submit():
+        selected_member = User.query.filter_by(
+            id=form.member_id.data, is_active=True, is_super_admin=False
+        ).first()
+        if not selected_member or not _can_access_member(selected_member.id):
+            flash('Select an active member in the permitted group.', 'error')
+            return render_template('contributions.html', form=form, action='Add')
+
         payment_method = form.payment_method.data if hasattr(form, 'payment_method') else 'cash'
         transaction_reference = form.transaction_reference.data if hasattr(form, 'transaction_reference') else None
+        transaction_reference = transaction_reference.strip() if transaction_reference else None
+        if transaction_reference and Contribution.query.filter_by(
+            transaction_reference=transaction_reference
+        ).first():
+            flash('That transaction reference has already been recorded.', 'error')
+            return render_template('contributions.html', form=form, action='Add')
 
         bank_name = form.bank_name.data.strip() if hasattr(form, 'bank_name') and form.bank_name.data else None
 
         contribution = Contribution(
-            member_id=form.member_id.data,
+            member_id=selected_member.id,
             amount=form.amount.data,
             contribution_type=form.contribution_type.data,
             payment_method=payment_method,
@@ -847,7 +977,7 @@ def add_contribution():
         db.session.add(contribution)
         db.session.commit()
 
-        member = User.query.get(form.member_id.data)
+        member = selected_member
 
         # Create notification for payment recording (with method and reference)
         try:
@@ -882,7 +1012,8 @@ def add_contribution():
                 contribution_id=contribution.id, # Link to contribution
                 receipt_number=receipt_number,
                 qr_code_data=json.dumps(qr_data),
-                generated_at=datetime.utcnow()
+                generated_at=datetime.utcnow(),
+                group_id=member.group_id,
             )
             db.session.add(digital_receipt)
             db.session.commit()
@@ -913,20 +1044,25 @@ def loans():
         return render_template('loans.html', loans=user_loans, is_member_view=True, form=None, action=None)
     elif has_permission(current_user, 'approve_loans'):
         # Group-filter loan queries
-        active_gid = get_active_group_id()
-        if active_gid:
-            gids = [u.id for u in User.query.filter_by(group_id=active_gid, is_active=True).all()]
-        else:
-            gids = None  # no filter — super admin sees all
+        gids = _group_member_ids()
 
         def loan_q(status):
             q = Loan.query.filter_by(status=status, is_deleted=False)
             if gids is not None:
-                q = q.filter(db.or_(Loan.member_id.in_(gids), Loan.loan_type == 'External'))
+                q = q.filter(db.or_(
+                    Loan.member_id.in_(gids),
+                    Loan.guarantor_id.in_(gids),
+                ))
             return q.order_by(Loan.application_date.desc()).all()
 
         applied_loans = loan_q('Pending')
-        existing_loans = Loan.query.filter_by(status='Active', is_deleted=False).order_by(Loan.approval_date.desc()).all() if gids is None else Loan.query.filter(Loan.status == 'Active', Loan.is_deleted == False, db.or_(Loan.member_id.in_(gids), Loan.loan_type == 'External')).order_by(Loan.approval_date.desc()).all()
+        existing_query = Loan.query.filter_by(status='Active', is_deleted=False)
+        if gids is not None:
+            existing_query = existing_query.filter(db.or_(
+                Loan.member_id.in_(gids),
+                Loan.guarantor_id.in_(gids),
+            ))
+        existing_loans = existing_query.order_by(Loan.approval_date.desc()).all()
         expired_loans = loan_q('Expired')
         
         # For repayment mode, we'll need to infer it from the loan details or add a specific field
@@ -955,7 +1091,11 @@ def apply_loan():
     form = LoanApplicationForm()
 
     # Populate guarantor choices for external loans
-    active_members = User.query.filter_by(is_active=True).all()
+    member_ids = _group_member_ids(active_only=True)
+    member_query = User.query.filter_by(is_active=True, is_super_admin=False)
+    if member_ids is not None:
+        member_query = member_query.filter(User.id.in_(member_ids))
+    active_members = member_query.all()
     form.guarantor_id.choices = [(0, 'Select Guarantor')] + [(member.id, member.full_name) for member in active_members]
 
     # Calculate and display loan limit
@@ -1061,6 +1201,9 @@ def approve_loan(loan_id):
         return redirect(url_for('loans'))
 
     loan = Loan.query.get_or_404(loan_id)
+    if not _can_access_record(loan):
+        flash('You do not have permission to access this loan.', 'error')
+        return redirect(url_for('loans'))
     form = LoanApprovalForm()
 
     if form.validate_on_submit():
@@ -1154,6 +1297,9 @@ def delete_loan(loan_id):
         return redirect(url_for('loans'))
 
     loan = Loan.query.get_or_404(loan_id)
+    if not _can_access_record(loan):
+        flash('You do not have permission to access this loan.', 'error')
+        return redirect(url_for('loans'))
     reason = request.form.get('reason', '').strip()
 
     if not reason:
@@ -1175,6 +1321,9 @@ def delete_contribution(contrib_id):
         return redirect(url_for('contributions'))
 
     contribution = Contribution.query.get_or_404(contrib_id)
+    if not _can_access_record(contribution):
+        flash('You do not have permission to access this contribution.', 'error')
+        return redirect(url_for('contributions'))
     reason = request.form.get('reason', '').strip()
 
     if not reason:
@@ -1187,34 +1336,6 @@ def delete_contribution(contrib_id):
     flash('Contribution has been deleted successfully', 'success')
     return redirect(url_for('contributions'))
 
-@app.route('/admin/activity-log')
-@login_required
-def activity_log():
-    """View system activity log (Admin only)."""
-    if current_user.role != 'Admin':
-        flash('You do not have permission to view activity logs', 'error')
-        return redirect(url_for('dashboard'))
-
-    from activity_logger import get_recent_activities
-    activities = get_recent_activities(100)
-    return render_template('activity_log.html', activities=activities)
-
-@app.route('/admin/clear-activity-log', methods=['POST'])
-@login_required
-def clear_activity_log():
-    """Clear activity log (Admin only)."""
-    if current_user.role != 'Admin':
-        flash('You do not have permission to clear activity logs', 'error')
-        return redirect(url_for('dashboard'))
-
-    from activity_logger import clear_activity_log
-    if clear_activity_log():
-        flash('Activity log cleared successfully', 'success')
-    else:
-        flash('Failed to clear activity log', 'error')
-    
-    return redirect(url_for('activity_log'))
-
 @app.route('/loans/repayment', methods=['GET', 'POST'])
 @login_required
 def loan_repayment():
@@ -1226,16 +1347,14 @@ def loan_repayment():
     form = LoanRepaymentForm()
 
     # Populate active loan choices — group-filtered
-    if current_user.is_super_admin:
-        active_loans = Loan.query.filter_by(status='Active', is_deleted=False).all()
-    elif current_user.group_id:
-        gids = [u.id for u in User.query.filter_by(group_id=current_user.group_id, is_active=True).all()]
-        active_loans = Loan.query.filter(
-            Loan.status == 'Active', Loan.is_deleted == False,
-            db.or_(Loan.member_id.in_(gids), Loan.loan_type == 'External')
-        ).all()
-    else:
-        active_loans = Loan.query.filter_by(status='Active', is_deleted=False).all()
+    gids = _group_member_ids()
+    active_query = Loan.query.filter_by(status='Active', is_deleted=False)
+    if gids is not None:
+        active_query = active_query.filter(db.or_(
+            Loan.member_id.in_(gids),
+            Loan.guarantor_id.in_(gids),
+        ))
+    active_loans = active_query.all()
     form.loan_id.choices = [('', 'Select a loan to process repayment...')]
 
     for loan in active_loans:
@@ -1254,10 +1373,13 @@ def loan_repayment():
 
     if form.validate_on_submit():
         try:
-            loan = Loan.query.get(form.loan_id.data)
+            loan = Loan.query.filter_by(id=form.loan_id.data).with_for_update().first()
             if not loan:
                 flash('Loan not found', 'error')
                 return render_template('loans.html', form=form, action='Repayment', loans=[], is_member_view=False)
+            if loan.status != 'Active' or loan.is_deleted or not _can_access_record(loan):
+                flash('This loan is unavailable or outside your group.', 'error')
+                return redirect(url_for('loans'))
 
             repayment_amount = form.amount.data
 
@@ -1268,6 +1390,10 @@ def loan_repayment():
             # Record repayment (with payment method/reference)
             pay_method = form.payment_method.data if hasattr(form, 'payment_method') else 'cash'
             tx_ref = form.transaction_reference.data if hasattr(form, 'transaction_reference') else None
+            tx_ref = tx_ref.strip() if tx_ref else None
+            if tx_ref and LoanRepayment.query.filter_by(transaction_reference=tx_ref).first():
+                flash('That transaction reference has already been recorded.', 'error')
+                return redirect(url_for('loans'))
             bnk_name = form.bank_name.data.strip() if hasattr(form, 'bank_name') and form.bank_name.data else None
             repayment = LoanRepayment(
                 loan_id=loan.id,
@@ -1279,7 +1405,9 @@ def loan_repayment():
             )
 
             # Update loan balance
-            loan.remaining_amount -= repayment_amount
+            loan.remaining_amount = round(
+                max(0.0, float(loan.remaining_amount) - float(repayment_amount)), 2
+            )
 
             # Mark loan as completed if fully paid
             if loan.remaining_amount <= 0:
@@ -1327,7 +1455,10 @@ def loan_repayment():
                         loan_repayment_id=repayment.id, # Link to the repayment record
                         receipt_number=receipt_number,
                         qr_code_data=json.dumps(qr_data),
-                        generated_at=datetime.utcnow()
+                        generated_at=datetime.utcnow(),
+                        group_id=loan.member.group_id if loan.member else (
+                            loan.guarantor.group_id if getattr(loan, 'guarantor', None) else None
+                        ),
                     )
                     db.session.add(digital_receipt)
                     db.session.commit()
@@ -1422,6 +1553,10 @@ def add_announcement():
         flash('You do not have permission to create announcements', 'error')
         return redirect(url_for('announcements'))
 
+    if current_user.is_super_admin and not get_active_group_id():
+        flash('Select a group before posting an announcement.', 'warning')
+        return redirect(url_for('groups'))
+
     form = AnnouncementForm()
 
     if form.validate_on_submit():
@@ -1430,7 +1565,7 @@ def add_announcement():
             content=form.content.data,
             is_urgent=form.is_urgent.data,
             created_by=current_user.id,
-            group_id=current_user.group_id
+            group_id=get_active_group_id()
         )
 
         db.session.add(announcement)
@@ -1445,7 +1580,11 @@ def add_announcement():
 @login_required
 def meetings():
     """Meeting records page."""
-    all_meetings = MeetingRecord.query.order_by(MeetingRecord.date_held.desc()).all()
+    meeting_query = MeetingRecord.query.filter_by(is_deleted=False)
+    group_id = get_active_group_id()
+    if group_id is not None:
+        meeting_query = meeting_query.filter(MeetingRecord.group_id == group_id)
+    all_meetings = meeting_query.order_by(MeetingRecord.date_held.desc()).all()
     return render_template('announcements.html', meetings=all_meetings, show_meetings=True)
 
 @app.route('/meetings/add', methods=['GET', 'POST'])
@@ -1457,14 +1596,16 @@ def add_meeting():
         return redirect(url_for('meetings'))
 
     form = MeetingRecordForm()
+    if current_user.is_super_admin and not get_active_group_id():
+        flash('Select a group before recording a meeting.', 'warning')
+        return redirect(url_for('groups'))
 
     # Populate attendee choices from group members
-    if current_user.is_super_admin:
-        group_members = User.query.filter_by(is_active=True).filter(User.is_super_admin == False).all()
-    elif current_user.group_id:
-        group_members = User.query.filter_by(is_active=True, group_id=current_user.group_id).all()
-    else:
-        group_members = User.query.filter_by(is_active=True).all()
+    member_ids = _group_member_ids(active_only=True)
+    member_query = User.query.filter_by(is_active=True).filter(User.is_super_admin.is_(False))
+    if member_ids is not None:
+        member_query = member_query.filter(User.id.in_(member_ids))
+    group_members = member_query.all()
     form.attendee_ids.choices = [(str(m.id), m.full_name) for m in group_members]
 
     if form.validate_on_submit():
@@ -1484,7 +1625,8 @@ def add_meeting():
             minutes=form.minutes.data,
             attendees=attendees_str,
             decisions=form.decisions.data,
-            recorded_by=current_user.id
+            recorded_by=current_user.id,
+            group_id=get_active_group_id(),
         )
 
         db.session.add(meeting)
@@ -1499,7 +1641,11 @@ def add_meeting():
 @login_required
 def documents():
     """Documents management page."""
-    all_documents = Document.query.order_by(Document.upload_date.desc()).all()
+    document_query = Document.query
+    group_id = get_active_group_id()
+    if group_id is not None:
+        document_query = document_query.filter(Document.group_id == group_id)
+    all_documents = document_query.order_by(Document.upload_date.desc()).all()
     return render_template('documents.html', documents=all_documents)
 
 @app.route('/documents/upload', methods=['GET', 'POST'])
@@ -1509,6 +1655,10 @@ def upload_document():
     if current_user.role not in ['Admin', 'Secretary']:
         flash('You do not have permission to upload documents', 'error')
         return redirect(url_for('documents'))
+
+    if current_user.is_super_admin and not get_active_group_id():
+        flash('Select a group before uploading a group document.', 'warning')
+        return redirect(url_for('groups'))
 
     form = DocumentForm()
 
@@ -1540,7 +1690,8 @@ def upload_document():
                     file_size=file_size,
                     category=form.category.data,
                     description=form.description.data,
-                    uploaded_by=current_user.id
+                    uploaded_by=current_user.id,
+                    group_id=get_active_group_id(),
                 )
 
                 db.session.add(document)
@@ -1568,6 +1719,9 @@ def upload_document():
 def download_document(doc_id):
     """Download document (Members only)."""
     document = Document.query.get_or_404(doc_id)
+    if not _can_access_record(document):
+        flash('You do not have permission to access this document.', 'error')
+        return redirect(url_for('documents'))
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], document.filename)
 
     if os.path.exists(file_path):
@@ -1736,11 +1890,27 @@ def change_password():
 @app.route('/payments', methods=['GET', 'POST'])
 @login_required
 def payments():
-    """Payment processing page."""
+    """Display legacy payment rows; new entries use the linked ledger workflows."""
     if not has_permission(current_user, 'manage_finances'):
         flash('You do not have permission to process payments', 'error')
         return redirect(url_for('dashboard'))
 
+    if request.method == 'POST':
+        flash(
+            'Standalone payment entry is disabled because it did not update a linked group ledger. '
+            'Use the contribution, loan repayment, fine, or welfare workflow instead.',
+            'warning',
+        )
+        return redirect(url_for('payments'))
+
+    payment_query = Payment.query
+    member_ids = _group_member_ids()
+    if member_ids is not None:
+        payment_query = payment_query.filter(Payment.member_id.in_(member_ids))
+    recent_payments = payment_query.order_by(Payment.payment_date.desc()).limit(100).all()
+    return render_template('payment_history.html', payments=recent_payments)
+
+    # Deprecated unlinked-payment implementation is intentionally unreachable.
     form = PaymentForm()
 
     # Populate reference choices (always, for both GET and POST re-display)
@@ -1817,8 +1987,9 @@ def welfare():
         return render_template('welfare.html', welfare_contributions=user_welfare, is_member_view=True)
 
     # Admin/Treasurer see all welfare data
-    welfare_contributions = WelfareContribution.query.filter_by(is_deleted=False).all()
-    welfare_expenses = WelfareExpense.query.all()
+    contribution_query, expense_query = _welfare_queries()
+    welfare_contributions = contribution_query.all()
+    welfare_expenses = expense_query.all()
 
     total_contributions = sum(w.amount for w in welfare_contributions)
     total_expenses = sum(w.amount for w in welfare_expenses)
@@ -1846,12 +2017,28 @@ def welfare_contribute():
         return redirect(url_for('welfare'))
 
     form = WelfareContributionForm()
+    if current_user.is_super_admin and not get_active_group_id():
+        flash('Select a group before recording a welfare contribution.', 'warning')
+        return redirect(url_for('groups'))
 
     # Populate member choices
-    active_members = User.query.filter_by(is_active=True).all()
+    member_ids = _group_member_ids(active_only=True)
+    member_query = User.query.filter_by(is_active=True, is_super_admin=False)
+    if member_ids is not None:
+        member_query = member_query.filter(User.id.in_(member_ids))
+    active_members = member_query.all()
     form.member_id.choices = [(member.id, member.full_name) for member in active_members]
 
     if form.validate_on_submit():
+        member = User.query.filter_by(
+            id=form.member_id.data,
+            is_active=True,
+            is_super_admin=False,
+        ).first()
+        if not member or not _can_access_member(member.id):
+            flash('Select an active member in the permitted group.', 'error')
+            return redirect(url_for('welfare'))
+
         welfare = WelfareContribution(
             member_id=form.member_id.data,
             amount=form.amount.data,
@@ -1862,8 +2049,16 @@ def welfare_contribute():
         db.session.add(welfare)
         db.session.commit()
 
-        member = User.query.get(form.member_id.data)
         flash(f'Welfare contribution of {format_currency(form.amount.data)} recorded for {member.full_name}', 'success')
+        try:
+            from activity_logger import log_activity
+            log_activity(
+                'recorded', 'welfare_contribution', welfare.id,
+                f'Recorded welfare contribution of {format_currency(welfare.amount)} for {member.full_name}',
+                group_id=member.group_id,
+            )
+        except Exception:
+            app.logger.exception('Could not audit welfare contribution.')
 
         # Create notification for welfare contribution
         try:
@@ -1887,7 +2082,8 @@ def welfare_contribute():
                 welfare_contribution_id=welfare.id, # Link to welfare contribution
                 receipt_number=receipt_number,
                 qr_code_data=json.dumps(qr_data),
-                generated_at=datetime.utcnow()
+                generated_at=datetime.utcnow(),
+                group_id=member.group_id,
             )
             db.session.add(digital_receipt)
             db.session.commit()
@@ -1909,8 +2105,9 @@ def welfare_contribute():
         return render_template('welfare.html', welfare_contributions=user_welfare, is_member_view=True, form=form, action='Contribute')
     
     # Admin/Treasurer see all welfare data
-    welfare_contributions = WelfareContribution.query.filter_by(is_deleted=False).all()
-    welfare_expenses = WelfareExpense.query.all()
+    contribution_query, expense_query = _welfare_queries()
+    welfare_contributions = contribution_query.all()
+    welfare_expenses = expense_query.all()
 
     total_contributions = sum(w.amount for w in welfare_contributions)
     total_expenses = sum(w.amount for w in welfare_expenses)
@@ -1940,20 +2137,37 @@ def welfare_expense():
         return redirect(url_for('welfare'))
 
     form = WelfareExpenseForm()
+    if current_user.is_super_admin and not get_active_group_id():
+        flash('Select a group before recording a welfare expense.', 'warning')
+        return redirect(url_for('groups'))
 
     # Populate beneficiary choices
-    active_members = User.query.filter_by(is_active=True).all()
+    member_ids = _group_member_ids(active_only=True)
+    member_query = User.query.filter_by(is_active=True, is_super_admin=False)
+    if member_ids is not None:
+        member_query = member_query.filter(User.id.in_(member_ids))
+    active_members = member_query.all()
     form.beneficiary_id.choices = [(member.id, member.full_name) for member in active_members]
 
     if form.validate_on_submit():
+        group_id = get_active_group_id()
+        if group_id:
+            Group.query.filter_by(id=group_id).with_for_update().first()
+
         # Check available welfare funds
-        total_contributions = sum(w.amount for w in WelfareContribution.query.filter_by(is_deleted=False).all())
-        total_expenses = sum(w.amount for w in WelfareExpense.query.all())
+        contribution_query, expense_query = _welfare_queries()
+        total_contributions = sum(w.amount for w in contribution_query.all())
+        total_expenses = sum(w.amount for w in expense_query.all())
         available_funds = total_contributions - total_expenses
 
         if form.amount.data > available_funds:
             flash(f'Insufficient welfare funds. Available: {format_currency(available_funds)}, Requested: {format_currency(form.amount.data)}', 'error')
             return render_template('welfare.html', form=form, action='Expense')
+
+        beneficiary = User.query.get(form.beneficiary_id.data)
+        if not beneficiary or not _can_access_member(beneficiary.id):
+            flash('Select an active beneficiary in the permitted group.', 'error')
+            return redirect(url_for('welfare'))
 
         expense = WelfareExpense(
             beneficiary_id=form.beneficiary_id.data,
@@ -1966,8 +2180,16 @@ def welfare_expense():
         db.session.add(expense)
         db.session.commit()
 
-        beneficiary = User.query.get(form.beneficiary_id.data)
         flash(f'Welfare expense of {format_currency(form.amount.data)} recorded for {beneficiary.full_name}', 'success')
+        try:
+            from activity_logger import log_activity
+            log_activity(
+                'recorded', 'welfare_expense', expense.id,
+                f'Recorded welfare expense of {format_currency(expense.amount)} for {beneficiary.full_name}; purpose: {expense.description}',
+                group_id=beneficiary.group_id,
+            )
+        except Exception:
+            app.logger.exception('Could not audit welfare expense.')
 
         # Create notification for welfare expense
         try:
@@ -1978,8 +2200,9 @@ def welfare_expense():
         return redirect(url_for('welfare'))
 
     # Get the same data as the main welfare view
-    welfare_contributions = WelfareContribution.query.filter_by(is_deleted=False).all()
-    welfare_expenses = WelfareExpense.query.all()
+    contribution_query, expense_query = _welfare_queries()
+    welfare_contributions = contribution_query.all()
+    welfare_expenses = expense_query.all()
 
     total_contributions = sum(w.amount for w in welfare_contributions)
     total_expenses = sum(w.amount for w in welfare_expenses)
@@ -2004,8 +2227,20 @@ def welfare_expense():
 @login_required
 def voting():
     """Voting and proposals page."""
-    active_proposals = VotingProposal.query.filter_by(status='Active').all()
-    recent_proposals = VotingProposal.query.filter(VotingProposal.status.in_(['Closed', 'Implemented'])).order_by(VotingProposal.created_date.desc()).limit(10).all()
+    group_id = get_active_group_id()
+    active_query = VotingProposal.query.filter_by(status='Active')
+    recent_query = VotingProposal.query.filter(VotingProposal.status.in_(['Closed', 'Implemented']))
+    if group_id is not None:
+        active_query = active_query.filter(db.or_(
+            VotingProposal.group_id == group_id,
+            VotingProposal.group_id.is_(None),
+        ))
+        recent_query = recent_query.filter(db.or_(
+            VotingProposal.group_id == group_id,
+            VotingProposal.group_id.is_(None),
+        ))
+    active_proposals = active_query.all()
+    recent_proposals = recent_query.order_by(VotingProposal.created_date.desc()).limit(10).all()
 
     # Calculate results for active proposals if needed for real-time view
     proposal_results = {}
@@ -2030,6 +2265,10 @@ def create_proposal():
         flash('You do not have permission to create proposals', 'error')
         return redirect(url_for('voting'))
 
+    if current_user.is_super_admin and not get_active_group_id():
+        flash('Select a group before creating a group proposal.', 'warning')
+        return redirect(url_for('groups'))
+
     form = VotingProposalForm()
 
     if form.validate_on_submit():
@@ -2041,7 +2280,8 @@ def create_proposal():
             voting_end=form.voting_end.data,
             minimum_participation=form.minimum_participation.data,
             created_by=current_user.id,
-            status='Active' if form.voting_start.data <= datetime.utcnow() else 'Draft'
+            status='Active' if form.voting_start.data <= datetime.utcnow() else 'Draft',
+            group_id=get_active_group_id(),
         )
 
         db.session.add(proposal)
@@ -2057,6 +2297,9 @@ def create_proposal():
 def cast_vote(proposal_id):
     """Cast vote on proposal."""
     proposal = VotingProposal.query.get_or_404(proposal_id)
+    if not current_user.is_super_admin and proposal.group_id not in (None, current_user.group_id):
+        flash('This proposal belongs to another group.', 'error')
+        return redirect(url_for('voting'))
 
     # Check if user has already voted
     existing_vote = Vote.query.filter_by(proposal_id=proposal_id, member_id=current_user.id).first()
@@ -2095,7 +2338,11 @@ def member_directory():
         flash('You do not have permission to view member directory', 'error')
         return redirect(url_for('dashboard'))
 
-    members = User.query.filter_by(is_active=True).all()
+    member_ids = _group_member_ids(active_only=True)
+    member_query = User.query.filter_by(is_active=True, is_super_admin=False)
+    if member_ids is not None:
+        member_query = member_query.filter(User.id.in_(member_ids))
+    members = member_query.all()
 
     # Enhanced member data with statistics
     enhanced_members = []
@@ -2137,26 +2384,33 @@ def gamification():
 def receipts():
     """View member's digital receipts."""
     if current_user.role == 'Member':
-        # Gather all receipt IDs that belong to this member via each foreign key
-        contrib_ids = [c.id for c in Contribution.query.filter_by(member_id=current_user.id).all()]
-        loan_ids = [l.id for l in Loan.query.filter_by(member_id=current_user.id).all()]
-        repayment_ids = [r.id for r in LoanRepayment.query.filter(LoanRepayment.loan_id.in_(loan_ids)).all()] if loan_ids else []
-        welfare_ids = [w.id for w in WelfareContribution.query.filter_by(member_id=current_user.id).all()]
-
-        all_receipts = DigitalReceipt.query.filter(
-            db.or_(
-                DigitalReceipt.contribution_id.in_(contrib_ids) if contrib_ids else db.false(),
-                DigitalReceipt.loan_repayment_id.in_(repayment_ids) if repayment_ids else db.false(),
-                DigitalReceipt.welfare_contribution_id.in_(welfare_ids) if welfare_ids else db.false(),
-            )
-        ).order_by(DigitalReceipt.generated_at.desc()).all()
-
+        member_ids = [current_user.id]
     elif has_permission(current_user, 'manage_finances'):
-        # Admin/Treasurer can see all receipts
-        all_receipts = DigitalReceipt.query.order_by(DigitalReceipt.generated_at.desc()).all()
+        member_ids = _group_member_ids()
     else:
         flash('You do not have permission to view receipts', 'error')
         return redirect(url_for('dashboard'))
+
+    if member_ids is None:
+        all_receipts = DigitalReceipt.query.order_by(DigitalReceipt.generated_at.desc()).all()
+    else:
+        contributions = Contribution.query.filter(Contribution.member_id.in_(member_ids)).with_entities(Contribution.id)
+        loans = Loan.query.filter(Loan.member_id.in_(member_ids)).with_entities(Loan.id)
+        repayments = LoanRepayment.query.filter(LoanRepayment.loan_id.in_(loans)).with_entities(LoanRepayment.id)
+        welfare = WelfareContribution.query.filter(WelfareContribution.member_id.in_(member_ids)).with_entities(WelfareContribution.id)
+        payments = Payment.query.filter(Payment.member_id.in_(member_ids)).with_entities(Payment.id)
+        conditions = [
+            DigitalReceipt.contribution_id.in_(contributions),
+            DigitalReceipt.loan_repayment_id.in_(repayments),
+            DigitalReceipt.welfare_contribution_id.in_(welfare),
+            DigitalReceipt.payment_id.in_(payments),
+        ]
+        group_id = get_active_group_id()
+        if group_id is not None:
+            conditions.append(DigitalReceipt.group_id == group_id)
+        all_receipts = DigitalReceipt.query.filter(
+            db.or_(*conditions)
+        ).order_by(DigitalReceipt.generated_at.desc()).all()
     
     return render_template('receipts.html', receipts=all_receipts)
 
@@ -2166,30 +2420,10 @@ def download_receipt(receipt_id):
     """Download a digital receipt as PDF."""
     receipt = DigitalReceipt.query.get_or_404(receipt_id)
     
-    # Check permissions
-    can_access = False
-    if current_user.role == 'Member':
-        # Check if this receipt belongs to the current member
-        if receipt.contribution_id:
-            contribution = Contribution.query.get(receipt.contribution_id)
-            if contribution and contribution.member_id == current_user.id:
-                can_access = True
-        elif receipt.loan_repayment_id:
-            loan_repayment = LoanRepayment.query.get(receipt.loan_repayment_id)
-            if loan_repayment and loan_repayment.loan.member_id == current_user.id:
-                can_access = True
-        elif receipt.welfare_contribution_id:
-            welfare = WelfareContribution.query.get(receipt.welfare_contribution_id)
-            if welfare and welfare.member_id == current_user.id:
-                can_access = True
-        elif receipt.payment_id:
-            payment = Payment.query.get(receipt.payment_id)
-            if payment and payment.member_id == current_user.id:
-                can_access = True
-    elif has_permission(current_user, 'manage_finances'):
-        can_access = True
-    
-    if not can_access:
+    if current_user.role != 'Member' and not has_permission(current_user, 'manage_finances'):
+        flash('You do not have permission to access this receipt.', 'error')
+        return redirect(url_for('receipts'))
+    if not _can_access_record(receipt):
         flash('You do not have permission to access this receipt', 'error')
         return redirect(url_for('receipts'))
     
@@ -2336,6 +2570,9 @@ def edit_announcement(announcement_id):
         return redirect(url_for('announcements'))
 
     announcement = Announcement.query.get_or_404(announcement_id)
+    if not _can_access_record(announcement):
+        flash('You do not have permission to edit this announcement.', 'error')
+        return redirect(url_for('announcements'))
     form = AnnouncementForm(obj=announcement)
 
     if form.validate_on_submit():
@@ -2354,6 +2591,9 @@ def edit_announcement(announcement_id):
 def view_announcement(announcement_id):
     """View single announcement."""
     announcement = Announcement.query.get_or_404(announcement_id)
+    if not current_user.is_super_admin and announcement.group_id not in (None, current_user.group_id):
+        flash('This announcement belongs to another group.', 'error')
+        return redirect(url_for('announcements'))
     return render_template('announcements.html', announcement=announcement, action='View')
 
 @app.route('/meetings/<int:meeting_id>/edit', methods=['GET', 'POST'])
@@ -2365,15 +2605,17 @@ def edit_meeting(meeting_id):
         return redirect(url_for('meetings'))
 
     meeting = MeetingRecord.query.get_or_404(meeting_id)
+    if not _can_access_record(meeting):
+        flash('You do not have permission to access this meeting.', 'error')
+        return redirect(url_for('meetings'))
     form = MeetingRecordForm(obj=meeting)
 
     # Populate attendee choices from group members
-    if current_user.is_super_admin:
-        group_members = User.query.filter_by(is_active=True).filter(User.is_super_admin == False).all()
-    elif current_user.group_id:
-        group_members = User.query.filter_by(is_active=True, group_id=current_user.group_id).all()
-    else:
-        group_members = User.query.filter_by(is_active=True).all()
+    member_ids = _group_member_ids(active_only=True)
+    member_query = User.query.filter_by(is_active=True).filter(User.is_super_admin.is_(False))
+    if member_ids is not None:
+        member_query = member_query.filter(User.id.in_(member_ids))
+    group_members = member_query.all()
     form.attendee_ids.choices = [(str(m.id), m.full_name) for m in group_members]
 
     if form.validate_on_submit():
@@ -2403,6 +2645,9 @@ def edit_meeting(meeting_id):
 def view_meeting(meeting_id):
     """View single meeting record."""
     meeting = MeetingRecord.query.get_or_404(meeting_id)
+    if not _can_access_record(meeting):
+        flash('You do not have permission to access this meeting.', 'error')
+        return redirect(url_for('meetings'))
     return render_template('announcements.html', meeting=meeting, action='View', show_meetings=True)
 
 @app.route('/meetings/<int:meeting_id>/delete', methods=['POST'])
@@ -2414,6 +2659,9 @@ def delete_meeting(meeting_id):
         return redirect(url_for('meetings'))
 
     meeting = MeetingRecord.query.get_or_404(meeting_id)
+    if not _can_access_record(meeting):
+        flash('You do not have permission to access this meeting.', 'error')
+        return redirect(url_for('meetings'))
     reason = request.form.get('reason', '').strip()
 
     if not reason:
@@ -2435,6 +2683,9 @@ def delete_announcement(announcement_id):
         return redirect(url_for('announcements'))
 
     announcement = Announcement.query.get_or_404(announcement_id)
+    if not _can_access_record(announcement):
+        flash('You do not have permission to delete this announcement.', 'error')
+        return redirect(url_for('announcements'))
     reason = request.form.get('reason', '').strip()
 
     if not reason:
@@ -2456,6 +2707,9 @@ def delete_fine(fine_id):
         return redirect(url_for('fines'))
 
     fine = Fine.query.get_or_404(fine_id)
+    if not _can_access_record(fine):
+        flash('You do not have permission to access this fine.', 'error')
+        return redirect(url_for('fines'))
     reason = request.form.get('reason', '').strip()
 
     if not reason:
@@ -2477,6 +2731,9 @@ def pay_fine(fine_id):
         return redirect(url_for('fines'))
 
     fine = Fine.query.get_or_404(fine_id)
+    if not _can_access_record(fine):
+        flash('You do not have permission to access this fine.', 'error')
+        return redirect(url_for('fines'))
     
     if fine.is_paid:
         flash('Fine is already paid', 'warning')
@@ -2511,6 +2768,9 @@ def delete_membership_application(app_id):
         return redirect(url_for('membership_applications'))
 
     application = MembershipApplication.query.get_or_404(app_id)
+    if not _can_access_record(application):
+        flash('You do not have permission to access this application.', 'error')
+        return redirect(url_for('membership_applications'))
     reason = request.form.get('reason', '').strip()
 
     if not reason:
@@ -2636,7 +2896,14 @@ def membership_applications():
         flash('You do not have permission to view membership applications', 'error')
         return redirect(url_for('dashboard'))
 
-    applications = MembershipApplication.query.order_by(MembershipApplication.application_date.desc()).all()
+    application_query = MembershipApplication.query
+    if not current_user.is_super_admin:
+        application_query = application_query.filter(
+            MembershipApplication.group_id == current_user.group_id
+        )
+    applications = application_query.order_by(
+        MembershipApplication.application_date.desc()
+    ).all()
     return render_template('membership_applications.html', applications=applications)
 
 @app.route('/membership-applications/<int:app_id>/review', methods=['POST'])
@@ -2649,6 +2916,9 @@ def review_membership_application(app_id):
 
     try:
         application = MembershipApplication.query.get_or_404(app_id)
+        if not _can_access_record(application):
+            flash('You do not have permission to review this application.', 'error')
+            return redirect(url_for('membership_applications'))
         action = request.form.get('action')
 
         if application.status in ('Approved', 'Rejected'):
@@ -2658,6 +2928,9 @@ def review_membership_application(app_id):
         if action == 'approve':
             # Determine which group to add the member to
             target_group_id = application.group_id or current_user.group_id
+            if not target_group_id:
+                flash('This application is not assigned to a group and cannot be approved.', 'error')
+                return redirect(url_for('membership_applications'))
 
             existing = User.query.filter(db.func.lower(User.email) == (application.email or '').strip().lower()).first()
             if existing:
@@ -2672,14 +2945,14 @@ def review_membership_application(app_id):
                 username = f"{base_username}_{counter}"
                 counter += 1
 
-            default_password = __import__('secrets').token_urlsafe(8)
+            temporary_password = secrets.token_urlsafe(32)
             new_user = User(
                 username=username,
                 full_name=application.full_name,
                 email=application.email,
                 phone=application.phone,
                 role='Member',
-                password_hash=generate_password_hash(default_password),
+                password_hash=generate_password_hash(temporary_password),
                 is_active=True,
                 two_factor_enabled=False,
                 group_id=target_group_id
@@ -2720,7 +2993,11 @@ def review_membership_application(app_id):
             except Exception:
                 pass
 
-            flash(f'✅ {application.full_name} approved and added as a Member. Username: "{username}", Default password: "{default_password}". Ask them to change their password on first login.', 'success')
+            flash(
+                f'{application.full_name} was approved and added as a member. '
+                f'Username: {username}. Ask them to use the password-reset link on their group login page.',
+                'success'
+            )
 
         elif action == 'reject':
             rejection_reason = request.form.get('rejection_reason', '').strip()
@@ -2844,6 +3121,50 @@ def groups():
         flash('You do not have permission to view this page.', 'error')
         return redirect(url_for('dashboard'))
 
+
+@app.route('/super-admin')
+@login_required
+def super_admin_dashboard():
+    """Platform overview backed only by records currently stored in CONNECT."""
+    if not current_user.is_super_admin:
+        flash('Permission denied.', 'error')
+        return redirect(url_for('dashboard'))
+
+    search = (request.args.get('q') or '').strip()
+    group_query = Group.query
+    if search:
+        pattern = f'%{search}%'
+        group_query = group_query.filter(
+            db.or_(Group.name.ilike(pattern), Group.location.ilike(pattern))
+        )
+    directory_groups = group_query.order_by(Group.name.asc()).limit(100).all()
+
+    total_groups = Group.query.count()
+    active_groups = Group.query.filter_by(is_active=True).count()
+    suspended_groups = Group.query.filter_by(is_active=False).count()
+    total_users = User.query.filter(User.is_super_admin.is_(False)).count()
+    active_users = User.query.filter(
+        User.is_super_admin.is_(False), User.is_active.is_(True)
+    ).count()
+    pending_applications = MembershipApplication.query.filter_by(status='Pending').count()
+    pending_loans = Loan.query.filter_by(status='Pending', is_deleted=False).count()
+    recent_audit = ActivityLog.query.order_by(ActivityLog.timestamp.desc()).limit(12).all()
+
+    return render_template(
+        'super_admin_dashboard.html',
+        search=search,
+        groups=directory_groups,
+        total_groups=total_groups,
+        active_groups=active_groups,
+        suspended_groups=suspended_groups,
+        total_users=total_users,
+        active_users=active_users,
+        pending_applications=pending_applications,
+        pending_loans=pending_loans,
+        recent_audit=recent_audit,
+    )
+
+
 @app.route('/groups/register', methods=['GET', 'POST'])
 def register_group():
     """Register a new group — publicly accessible (any group can self-register)."""
@@ -2955,16 +3276,24 @@ def toggle_group(group_id):
         flash('Permission denied.', 'error')
         return redirect(url_for('groups'))
     grp = Group.query.get_or_404(group_id)
+    reason = (request.form.get('reason') or '').strip()
+    if len(reason) < 5:
+        flash('Enter a reason of at least five characters for this access change.', 'error')
+        return redirect(url_for('super_admin_dashboard'))
     grp.is_active = not grp.is_active
     db.session.commit()
     status = 'activated' if grp.is_active else 'deactivated'
     try:
         from activity_logger import log_activity
-        log_activity(status, 'group', grp.id, f'Group "{grp.name}" was {status}', group_id=grp.id)
+        log_activity(
+            status, 'group', grp.id,
+            f'Group "{grp.name}" was {status}. Reason: {reason}',
+            group_id=grp.id,
+        )
     except Exception:
         pass
     flash(f'Group "{grp.name}" has been {status}.', 'success')
-    return redirect(url_for('groups'))
+    return redirect(url_for('super_admin_dashboard'))
 
 # ─── Messaging Routes ─────────────────────────────────────────────────────────
 
@@ -3150,6 +3479,10 @@ def add_project():
         return redirect(url_for('projects'))
 
     form = ProjectForm()
+    if current_user.is_super_admin and not get_active_group_id():
+        flash('Select a group before adding a project.', 'warning')
+        return redirect(url_for('groups'))
+
     if form.validate_on_submit():
         project = Project(
             name=form.name.data,
@@ -3159,7 +3492,7 @@ def add_project():
             start_date=form.start_date.data,
             end_date=form.end_date.data,
             created_by=current_user.id,
-            group_id=current_user.group_id
+            group_id=get_active_group_id()
         )
         db.session.add(project)
 
@@ -3190,6 +3523,9 @@ def edit_project(project_id):
     project = Project.query.get_or_404(project_id)
     if current_user.role not in ['Admin', 'Chairman', 'Secretary'] and not current_user.is_super_admin:
         flash('You do not have permission to edit projects.', 'error')
+        return redirect(url_for('projects'))
+    if not _can_access_record(project):
+        flash('You do not have permission to edit this project.', 'error')
         return redirect(url_for('projects'))
 
     form = ProjectForm(obj=project)
@@ -3222,7 +3558,15 @@ def add_member_to_group():
 @app.route('/groups/<int:group_id>/delete', methods=['POST'])
 @login_required
 def delete_group(group_id):
-    """Permanently delete a DEACTIVATED group and all its records (super admin only)."""
+    """Legacy endpoint intentionally disabled to preserve group and financial history."""
+    if not current_user.is_super_admin:
+        flash('Permission denied.', 'error')
+        return redirect(url_for('groups'))
+    flash('Permanent group deletion is disabled. Suspend or restore access instead.', 'warning')
+    return redirect(url_for('super_admin_dashboard'))
+
+    # Legacy deletion implementation retained below only as migration context;
+    # the early return above prevents it from running.
     import json
     from flask import Response
     from sqlalchemy import select, delete as sa_delete, or_
@@ -3320,18 +3664,24 @@ def delete_group(group_id):
 @app.route('/admin/activity-log')
 @login_required
 def admin_activity_log():
-    if not current_user.is_super_admin:
+    if not current_user.is_super_admin and current_user.role != 'Admin':
         flash('Permission denied.', 'error')
         return redirect(url_for('dashboard'))
     from models import ActivityLog
-    gid = request.args.get('group_id', type=int)
     q = ActivityLog.query
-    if gid:
+    if current_user.is_super_admin:
+        gid = request.args.get('group_id', type=int)
+        if gid:
+            q = q.filter(ActivityLog.group_id == gid)
+    else:
+        gid = current_user.group_id
         q = q.filter(ActivityLog.group_id == gid)
     rows = q.order_by(ActivityLog.id.desc()).limit(200).all()
     uids = list({r.user_id for r in rows if r.user_id})
     users = {u.id: u.full_name for u in User.query.filter(User.id.in_(uids)).all()} if uids else {}
     groups_list = Group.query.order_by(Group.name).all()
+    if not current_user.is_super_admin:
+        groups_list = [group for group in groups_list if group.id == current_user.group_id]
     gnames = {g.id: g.name for g in groups_list}
     return render_template('activity_log.html', rows=rows, users=users,
                            gnames=gnames, groups=groups_list, selected=gid)

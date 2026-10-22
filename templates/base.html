@@ -131,6 +131,11 @@
                         <a class="nav-link{% if ep in ['groups','register_group','edit_group','toggle_group'] %} nav-active{% endif %}" href="{{ url_for('groups') }}"><i class="fas fa-layer-group me-1"></i>Groups</a>
                     </li>
                     {% endif %}
+                {% if current_user.is_super_admin %}
+                <li class="nav-item">
+                    <a class="nav-link{% if ep == 'super_admin_dashboard' %} nav-active{% endif %}" href="{{ url_for('super_admin_dashboard') }}"><i class="fas fa-shield-alt me-1"></i>Platform</a>
+                </li>
+                {% endif %}
 
                     <li class="nav-item">
                         <a class="nav-link{% if ep in ['voting','create_proposal','cast_vote'] %} nav-active{% endif %}" href="{{ url_for('voting') }}"><i class="fas fa-vote-yea me-1"></i>Voting</a>
@@ -299,6 +304,9 @@
 
                 {% if current_user.is_super_admin or current_user.role == 'Admin' %}
                 <li><a class="offcanvas-nav-link{% if ep in ['groups','register_group','edit_group','toggle_group'] %} nav-active{% endif %}" href="{{ url_for('groups') }}"><i class="fas fa-layer-group fa-fw"></i>Groups</a></li>
+                {% endif %}
+                {% if current_user.is_super_admin %}
+                <li><a class="offcanvas-nav-link{% if ep == 'super_admin_dashboard' %} nav-active{% endif %}" href="{{ url_for('super_admin_dashboard') }}"><i class="fas fa-shield-alt fa-fw"></i>Platform</a></li>
                 {% endif %}
 
                 <li><a class="offcanvas-nav-link{% if ep in ['messages','compose_message','view_message','delete_message'] %} nav-active{% endif %}" href="{{ url_for('messages') }}">

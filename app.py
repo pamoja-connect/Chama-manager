@@ -6,9 +6,9 @@ from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
-from datetime import datetime
+from datetime import datetime, timedelta
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 class Base(DeclarativeBase):
@@ -18,8 +18,19 @@ class Base(DeclarativeBase):
 db = SQLAlchemy(model_class=Base)
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "connect-secret-key-change-in-production")
+session_secret = os.environ.get("SESSION_SECRET")
+if not session_secret:
+    raise RuntimeError("SESSION_SECRET must be configured before CONNECT can start.")
+app.secret_key = session_secret
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    REMEMBER_COOKIE_HTTPONLY=True,
+    REMEMBER_COOKIE_SECURE=True,
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
+)
 
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -51,7 +62,6 @@ with app.app_context():
     db.create_all()
 
     from models import User, Group
-    from werkzeug.security import generate_password_hash
 
     # Create default group "Pamoja Agencies SHG" if no groups exist
     default_group = Group.query.first()
@@ -81,42 +91,12 @@ with app.app_context():
         db.session.rollback()
         logging.error(f"Error assigning groups: {e}")
 
-    # Create CONNECT super admin if not exists
-    super_admin = User.query.filter_by(is_super_admin=True).first()
-    if not super_admin:
-        existing = User.query.filter_by(username='CONNECT_ADMIN').first()
-        if not existing:
-            super_admin = User(
-                username='CONNECT_ADMIN',
-                full_name='CONNECT Administrator',
-                email='admin@connect-shg.app',
-                phone='0000000000',
-                role='Admin',
-                password_hash=generate_password_hash(''),
-                is_active=True,
-                is_super_admin=True,
-                group_id=None
-            )
-            db.session.add(super_admin)
-            db.session.commit()
-            logging.info("CONNECT super admin created")
-
-    # Create default group admin if not exists
-    admin = User.query.filter_by(username='SALIM TUVA KARISA').first()
-    if not admin:
-        admin = User(
-            username='SALIM TUVA KARISA',
-            full_name='Salim Tuva Karisa',
-            email='pamojaagenciesshg@gmail.com',
-            phone='254799466723',
-            role='Admin',
-            password_hash=generate_password_hash(''),
-            is_active=True,
-            group_id=default_group.id
-        )
-        db.session.add(admin)
-        db.session.commit()
-        logging.info("Default group admin created")
+    # Never bootstrap accounts with an empty or predictable password. Provision
+    # administrators through the password-protected setup/reset utility.
+    if not User.query.filter_by(is_super_admin=True).first():
+        logging.warning("No CONNECT super administrator is configured.")
+    if not User.query.filter_by(group_id=default_group.id, role='Admin').first():
+        logging.warning("No administrator is configured for the default group.")
 
     try:
         from routes import initialize_default_badges

@@ -405,7 +405,11 @@ def log_activity(action, resource_type=None, resource_id=None, details=None, gro
         cols = {c.name for c in ActivityLog.__table__.columns}
         uid = current_user.id if current_user and current_user.is_authenticated else None
         if group_id == 'auto':
-            group_id = getattr(current_user, 'group_id', None) if uid else None
+            if uid:
+                from utils import get_active_group_id
+                group_id = get_active_group_id()
+            else:
+                group_id = None
         values = {}
 
         def put(names, value):

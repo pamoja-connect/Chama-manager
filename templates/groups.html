@@ -154,9 +154,10 @@
                         <a href="{{ url_for('edit_group', group_id=g.id) }}" class="btn btn-outline-primary btn-sm flex-fill">
                             <i class="fas fa-edit me-1"></i>Edit
                         </a>
-                        <form action="{{ url_for('toggle_group', group_id=g.id) }}" method="POST"
-                              onsubmit="return confirm('{{ 'Deactivate' if g.is_active else 'Activate' }} this group?')">
+                        <form action="{{ url_for('toggle_group', group_id=g.id) }}" method="POST" class="d-flex flex-column gap-1">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input class="form-control form-control-sm" name="reason" required minlength="5" maxlength="500"
+                                   placeholder="Reason for access change" aria-label="Reason for access change">
                             <button type="submit" class="btn btn-{{ 'outline-warning' if g.is_active else 'outline-success' }} btn-sm">
                                 <i class="fas fa-{{ 'pause' if g.is_active else 'play' }} me-1"></i>{{ 'Deactivate' if g.is_active else 'Activate' }}
                             </button>

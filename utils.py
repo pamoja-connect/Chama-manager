@@ -271,7 +271,9 @@ def get_active_group_id():
         return None
     if current_user.is_super_admin:
         return session.get('active_group_id')
-    return current_user.group_id
+    # A missing group must never mean "all groups". Use a truthy non-existent
+    # id so existing group-filtered queries return no tenant data.
+    return current_user.group_id if current_user.group_id is not None else -1
 
 
 def has_permission(user, action):

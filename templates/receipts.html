@@ -212,40 +212,6 @@ function viewReceipt(receiptNumber, qrData) {
         console.error('Error viewing receipt:', error);
         alert('Error loading receipt. Please try again.');
     }
-}</script>
-            
-            <div class="mb-3">
-                <strong>Payment Type:</strong> ${data.type ? data.type.replace('_', ' ').toUpperCase() : 'Payment'}
-            </div>
-            
-            <div class="mb-3">
-                <strong>Amount:</strong> <span class="h4 text-success">KSh ${parseFloat(data.amount).toLocaleString()}</span>
-            </div>
-            
-            ${data.recorded_by ? `<div class="mb-3"><strong>Recorded By:</strong> ${data.recorded_by}</div>` : ''}
-            
-            <hr>
-            
-            <div class="text-center">
-                <div class="qr-placeholder border p-3 d-inline-block" style="width: 150px; height: 150px; background: #f8f9fa;">
-                    <div class="d-flex align-items-center justify-content-center h-100">
-                        <div>
-                            <i class="fas fa-qrcode fa-3x text-muted"></i>
-                            <br><small class="text-muted">QR Code</small>
-                        </div>
-                    </div>
-                </div>
-                <br><small class="text-muted">Scan to verify receipt authenticity</small>
-            </div>
-            
-            <div class="text-center mt-4">
-                <small class="text-muted">This is an official digital receipt from Pamoja Agencies SHG</small>
-            </div>
-        </div>
-    `;
-    
-    document.getElementById('receiptContent').innerHTML = receiptHtml;
-    new bootstrap.Modal(document.getElementById('receiptModal')).show();
 }
 
 function printReceipt() {

@@ -1,29 +1,30 @@
-<!doctype html>
-<html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Activity log</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="p-3">
-<a href="{{ url_for('groups') }}">&larr; Back to groups</a>
-<h4 class="mt-2">Activity log</h4>
-<form method="get" class="mb-3">
-  <select name="group_id" class="form-select" onchange="this.form.submit()">
-    <option value="">All groups</option>
-    {% for g in groups %}<option value="{{ g.id }}" {{ 'selected' if selected == g.id }}>{{ g.name }}</option>{% endfor %}
-  </select>
-</form>
-<div class="table-responsive"><table class="table table-sm">
-<thead><tr><th>When (UTC)</th><th>Who</th><th>Group</th><th>Action</th><th>Details</th></tr></thead>
-<tbody>
-{% for r in rows %}
-<tr><td>{{ r.timestamp.strftime('%d %b %H:%M') if r.timestamp else '' }}</td>
-<td>{{ users.get(r.user_id, 'System') }}</td>
-<td>{{ gnames.get(r.group_id, '-') }}</td>
-<td>{{ r.action }} {{ r.entity_type or '' }}</td>
-<td>{{ r.description or '' }}</td></tr>
-{% else %}
-<tr><td colspan="5">No activity yet.</td></tr>
-{% endfor %}
-</tbody></table></div>
-</body></html>
+{% extends "base.html" %}
+{% block title %}Activity log | CONNECT{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  <a href="{{ url_for('groups') if current_user.is_super_admin else url_for('dashboard') }}" class="btn btn-sm btn-outline-secondary mb-3">&larr; Back</a>
+  <h1 class="h4 fw-bold mb-3">Activity log</h1>
+  <form method="get" class="mb-3">
+    <select name="group_id" class="form-select" onchange="this.form.submit()">
+      {% if current_user.is_super_admin %}<option value="">All groups</option>{% endif %}
+      {% for g in groups %}<option value="{{ g.id }}" {{ 'selected' if selected == g.id }}>{{ g.name }}</option>{% endfor %}
+    </select>
+  </form>
+  <div class="card shadow">
+    <ul class="list-group list-group-flush">
+      {% for r in rows %}
+      <li class="list-group-item bg-transparent text-reset">
+        <div class="d-flex justify-content-between gap-2">
+          <strong>{{ r.action }}{% if r.entity_type %} &middot; {{ r.entity_type }}{% endif %}</strong>
+          <small class="text-muted text-nowrap">{{ r.timestamp.strftime('%d %b %H:%M') if r.timestamp else '' }}</small>
+        </div>
+        <div class="small">{{ r.description or '' }}</div>
+        <div class="small text-muted">{{ users.get(r.user_id, 'System') }}{% if r.group_id %} &middot; {{ gnames.get(r.group_id, '') }}{% endif %}</div>
+      </li>
+      {% else %}
+      <li class="list-group-item bg-transparent text-reset">No activity yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

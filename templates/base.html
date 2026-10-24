@@ -57,6 +57,7 @@
     </style>
 
     {% block extra_head %}{% endblock %}
+<style>.navbar-toggler{order:-1!important;margin-left:0!important;margin-right:.5rem!important}</style>
 </head>
 <body>
     {% if current_user.is_authenticated %}
@@ -597,7 +598,7 @@
 <script>/* SA-MENU */
 document.addEventListener("DOMContentLoaded",function(){
   var hide=["Members","Savings","Loans","Fines","Projects","Voting","Welfare","Reports","Applications","Receipts"];
-  document.querySelectorAll("a.nav-link").forEach(function(a){
+  document.querySelectorAll("a.nav-link, a.offcanvas-nav-link").forEach(function(a){
     var t=a.textContent.trim();
     if(hide.indexOf(t)>-1){(a.closest("li")||a).style.display="none";}
     if(t==="Platform"){

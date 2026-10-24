@@ -17,3 +17,5 @@ templates/receipts.html.bak
 templates/base.html.bak2
 templates/base.html.bak2
 routes.py.bak4
+templates/super_admin_dashboard.html.bak
+templates/base.html.bak3

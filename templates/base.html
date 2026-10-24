@@ -593,5 +593,22 @@
 
     {% block extra_scripts %}{% endblock %}
 <script>document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll(".modal").forEach(function(m){document.body.appendChild(m);});});</script>
+{% if current_user.is_authenticated and current_user.is_super_admin %}
+<script>/* SA-MENU */
+document.addEventListener("DOMContentLoaded",function(){
+  var hide=["Members","Savings","Loans","Fines","Projects","Voting","Welfare","Reports","Applications","Receipts"];
+  document.querySelectorAll("a.nav-link").forEach(function(a){
+    var t=a.textContent.trim();
+    if(hide.indexOf(t)>-1){(a.closest("li")||a).style.display="none";}
+    if(t==="Platform"){
+      var host=a.closest("li")||a, c=host.cloneNode(true), a2=c.matches("a")?c:c.querySelector("a");
+      a2.href="{{ url_for('admin_activity_log') }}"; a2.classList.remove("nav-active");
+      a2.innerHTML=a2.innerHTML.replace("Platform","Security &amp; Audit");
+      host.parentNode.insertBefore(c,host.nextSibling);
+    }
+  });
+});
+</script>
+{% endif %}
 </body>
 </html>
